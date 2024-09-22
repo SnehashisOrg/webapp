@@ -4,10 +4,14 @@ from fastapi import FastAPI, Request, Response, HTTPException, status
 import os
 import uvicorn
 import json
+import logging
 
 load_dotenv()
 
 app = FastAPI()
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 USER = os.getenv("PG_USER")
 PASSWORD = os.getenv("PG_PASSWORD")
@@ -28,43 +32,27 @@ def get_database_connection() -> bool:
 
     try:
         with engine.connect() as conn:
-            print("Connection Successful!")
+            logger.info("Connection successful!")
             return True
     except Exception as e:
-        print(e)
-        raise e
+        logger.info(f"Error in database connection!  {e}")
+        return False
 
 @app.get("/healthz")
 async def healthcheck(request: Request, response: Response):
-    print("DEBUG: ", request.body())
-    if await request.body():
+    if await request.body() or request.query_params:
         return Response(status_code=status.HTTP_400_BAD_REQUEST)
-    try:
-        if get_database_connection():
-            return Response(status_code=status.HTTP_200_OK, headers=HEADERS)
-    except Exception as e:
+    
+    if not get_database_connection():
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=HEADERS)
     
+    return Response(status_code=status.HTTP_200_OK, headers=HEADERS)
+    
 @app.post("/healthz")
-def healthcheck():
-    return Response(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, headers=HEADERS)
-
 @app.put("/healthz")
-def healthcheck():
-    return Response(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, headers=HEADERS)
-
 @app.patch("/healthz")
-def healthcheck():
-    return Response(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, headers=HEADERS)
-
 @app.delete("/healthz")
-def healthcheck():
-    return Response(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, headers=HEADERS)
-
 @app.head("/healthz")
-def healthcheck():
-    return Response(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, headers=HEADERS)
-
 @app.options("/healthz")
 def healthcheck():
     return Response(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, headers=HEADERS)
