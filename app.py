@@ -6,18 +6,20 @@ import uvicorn
 import json
 import logging
 
+# Parse a .env file and then load all the variables found as environment variables.
 load_dotenv()
 
+# the main entrypoint to use FastAPI.
 app = FastAPI()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-USER = os.getenv("PG_USER")
-PASSWORD = os.getenv("PG_PASSWORD")
-HOST = os.getenv("PG_HOST")
-PORT = os.getenv("PG_PORT")
-DATABASE = os.getenv("PG_DATABASE")
+USER = os.getenv("MYSQL_USER")
+PASSWORD = os.getenv("MYSQL_PASSWORD")
+HOST = os.getenv("MYSQL_HOST")
+PORT = os.getenv("MYSQL_PORT")
+DATABASE = os.getenv("MYSQL_DATABASE")
 
 HEADERS = {
         "Cache-Control": 'no-cache, no-store, must-revalidate;',
@@ -26,7 +28,7 @@ HEADERS = {
     }
 
 def get_database_connection() -> bool:
-    CONNECTION_STRING = f'postgresql://{USER}:{PASSWORD}@{HOST}:{PORT}/{DATABASE}'
+    CONNECTION_STRING = f"mysql+pymysql://{USER}:{PASSWORD}@{HOST}/{DATABASE}"
 
     engine = create_engine(CONNECTION_STRING)
 
