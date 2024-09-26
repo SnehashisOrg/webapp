@@ -3,19 +3,19 @@
 ## Assignment 01
 
 ### Assignment Stack
-<b>1. Server:</b> <i>Ubuntu 24.04 LTS</i>
-<b>2. Programming Language:</b> <i>Python</i>
-<b>3. Database:</b> <i>MySQL</i>
-<b>4. ORM:</b> <i>SQLAlchemy</i>
-<b>5. UI Framework:</b> <i>N/A</i>
-<b>6. CSS:</b> <i>N/A</i>
+<b>1. Server:</b> <i>Ubuntu 24.04 LTS</i></br>
+<b>2. Programming Language:</b> <i>Python</i></br>
+<b>3. Database:</b> <i>MySQL</i></br>
+<b>4. ORM:</b> <i>SQLAlchemy</i></br>
+<b>5. UI Framework:</b> <i>N/A</i></br>
+<b>6. CSS:</b> <i>N/A</i></br>
 
 #### Prerequisites to run:
 
-<i>1. Python should be installed in your system</i>
-<i>2. MySQL Community Server should be installed, after that you can download MySQL Workbench ease of accessing different MySQL resources</i>
-<i>3. You can install Postman so as to test the API endpoints seamlessly</i>
-<i>4. Should have git installed in your system</i>
+<i>1. Python should be installed in your system</i></br>
+<i>2. MySQL Community Server should be installed, after that you can download MySQL Workbench ease of accessing different MySQL resources</i></br>
+<i>3. You can install Postman so as to test the API endpoints seamlessly</i></br>
+<i>4. Should have git installed in your system</i></br>
 
 #### Steps to run this locally:
 <i>1. Clone this repo in your local, use the below commands in your terminal:</i>
