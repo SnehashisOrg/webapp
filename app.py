@@ -2,8 +2,10 @@ from fastapi import FastAPI, Request, Response, HTTPException, status, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
+from sqlalchemy_utils import database_exists, create_database
 from models.user import User, Base
-from database import get_database_connection, get_database_session, get_engine
+from schemas.user_schema import UserSchema, UserRequestBodyModel, UserUpdateRequestBodyModel
+from database import get_database_connection, get_database_session, get_engine, DB_CONNECTION_STRING
 import os
 import uvicorn
 import json
@@ -18,7 +20,15 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-User.metadata.create_all(bind=get_engine())
+engine = get_engine()
+
+if not database_exists(engine.url):
+    create_database(engine.url)
+
+@app.on_event('startup')
+async def startup():
+    logger.info("Startup!!")
+    User.metadata.create_all(bind=get_engine())
 
 security = HTTPBasic()
 
@@ -45,12 +55,6 @@ def authenticate(credentials: HTTPBasicCredentials = Depends(security), db: Sess
         )
 
     return user.email
-
-class UserRequestBodyModel(BaseModel):
-    email: EmailStr
-    password: str
-    firstname: str
-    lastname: str
 
 # setting up the headers
 HEADERS = {
@@ -84,7 +88,7 @@ def healthcheck():
     # checks for the scenarios when the method type is not GET
     return Response(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, headers=HEADERS)
 
-@app.post("/v1/user")
+@app.post("/v1/user", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
 async def create_user(user: UserRequestBodyModel, db: Session = Depends(get_database_session)):
 
     try:
@@ -105,21 +109,12 @@ async def create_user(user: UserRequestBodyModel, db: Session = Depends(get_data
         db.commit()
         db.refresh(new_user)
 
-        return_response = {
-            "id": new_user.id,
-            "firstname": new_user.firstname,
-            "lastname": new_user.lastname,
-            "email": new_user.email,
-            "account_created": str(new_user.account_created),
-            "account_updated": str(new_user.account_updated)
-        }
-
-        return Response(status_code=status.HTTP_201_CREATED, content=json.dumps(return_response), media_type="application/json")
+        return new_user
     except Exception as e:
         logger.error(f"Database error... {e}")
         return Response(status_code=status.HTTP_400_BAD_REQUEST, headers=HEADERS)
 
-@app.get("/v1/user/self", dependencies=[Depends(authenticate)])
+@app.get("/v1/user/self", dependencies=[Depends(authenticate)], response_model=UserSchema)
 async def get_user(request: Request, authenticated_email: str = Depends(authenticate), db: Session = Depends(get_database_session)):
     try:
         if request.headers.get("content-length") is not None or request.headers.get("content-type") is not None:
@@ -135,25 +130,10 @@ async def get_user(request: Request, authenticated_email: str = Depends(authenti
 
         user = db.query(User).filter(User.email == authenticated_email).first()
 
-        return_response = {
-            "id": user.id,
-            "first_name": user.firstname,
-            "last_name": user.lastname,
-            "email": user.email,
-            "account_created": str(user.account_created),
-            "account_updated": str(user.account_updated)
-        }
-
-        return Response(status_code=status.HTTP_200_OK, content=json.dumps(return_response), media_type="application/json")
+        return user
     except Exception as e:
         print(f"Server error... {e}")
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
-        
-class UserUpdateRequestBodyModel(BaseModel):
-    first_name: str = None
-    last_name: str = None
-    password: str = None
-    email: str = None
 
 @app.put("/v1/user/self", dependencies=[Depends(authenticate)])
 async def update_user(user_details: UserUpdateRequestBodyModel, authenticated_email: str = Depends(authenticate),  db: Session = Depends(get_database_session)):
@@ -165,8 +145,6 @@ async def update_user(user_details: UserUpdateRequestBodyModel, authenticated_em
 
         if not user:
             return Response(status_code=status.HTTP_404_NOT_FOUND, headers=HEADERS)
-        
-        print(f"{user_details.first_name}, {user_details.last_name}, {user_details.email}, {user_details.password}")
 
         if user_details.first_name is not None:
             user.firstname = user_details.first_name
@@ -180,8 +158,6 @@ async def update_user(user_details: UserUpdateRequestBodyModel, authenticated_em
 
         db.commit()
         db.refresh(user)
-
-        print(user.firstname)
 
         return Response(status_code=status.HTTP_204_NO_CONTENT, headers=HEADERS)
 
@@ -199,4 +175,4 @@ def users():
 
 # Code entrypoint
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
