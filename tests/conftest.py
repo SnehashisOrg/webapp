@@ -6,11 +6,23 @@ from sqlalchemy_utils import database_exists, create_database
 from app import app, get_database_session
 from models.user import Base
 from database import get_engine
+import os 
+from dotenv import load_dotenv
+
+load_dotenv()
 
 asyncio_default_fixture_loop_scope = "function"
 
+# Database credentials
+TEST_USER = os.getenv("MYSQL_USER")
+TEST_PASSWORD = os.getenv("MYSQL_PASSWORD")
+TEST_HOST = os.getenv("MYSQL_HOST")
+TEST_PORT = os.getenv("MYSQL_PORT")
+TEST_DATABASE = os.getenv("TEST_MYSQL_DATABASE")
+
 # Setup test database
-TEST_DB_URL = "mysql+pymysql://root:password123@localhost:3306/test_db"
+TEST_DB_URL = f"mysql+pymysql://{TEST_USER}:{TEST_PASSWORD}@{TEST_HOST}:{TEST_PORT}/{TEST_DATABASE}"
+
 engine = create_engine(TEST_DB_URL)
 if not database_exists(engine.url):
     create_database(engine.url)
