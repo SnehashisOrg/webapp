@@ -22,13 +22,12 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 '''
-Handle lifespan events like startup and shutdown
-  startup: create the database and tables if not created 
-  shutdown: do the operations when the server terminates
+Handle events on startup
 '''
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+@app.on_event('startup')
+async def startup():
     logger.info("Startup!!")
 
     try:
@@ -41,10 +40,31 @@ async def lifespan(app: FastAPI):
         logger.info("Database tables created successfully!!")
     except OperationalError as e:
         logger.error(f"Database connection error during startup: {e}")
-    
-    yield
 
-    logger.info("Shutdown!!")
+'''
+Handle lifespan events like startup and shutdown
+  startup: create the database and tables if not created 
+  shutdown: do the operations when the server terminates
+'''
+# issue with below commented code in the droplet, the below block does not get triggered
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     logger.info("Startup!!")
+
+#     try:
+#         engine = get_engine()
+#         if not database_exists(engine.url):
+#             create_database(engine.url)
+#             logger.info('Database created successfully!!')
+        
+#         User.metadata.create_all(bind=get_engine())
+#         logger.info("Database tables created successfully!!")
+#     except OperationalError as e:
+#         logger.error(f"Database connection error during startup: {e}")
+    
+#     yield
+
+#     logger.info("Shutdown!!")
 
 security = HTTPBasic()
 
