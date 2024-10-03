@@ -11,8 +11,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-asyncio_default_fixture_loop_scope = "function"
-
 # Database credentials
 TEST_USER = os.getenv("MYSQL_USER")
 TEST_PASSWORD = os.getenv("MYSQL_PASSWORD")
