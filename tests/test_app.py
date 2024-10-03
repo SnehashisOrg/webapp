@@ -4,6 +4,9 @@ from models.user import User
 import bcrypt
 from datetime import datetime
 
+"""
+/healthz endpoint unit tests
+"""
 def test_healthcheck(client):
     response = client.get("/healthz")
     assert response.status_code == status.HTTP_200_OK
@@ -36,6 +39,9 @@ def test_healthcheck_delete(client):
     response = client.delete("/healthz")
     assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
 
+"""
+User API endpoints unit tests
+"""
 def test_create_user(client, db_session):
     user_data = {
         "email": "test@example.com",

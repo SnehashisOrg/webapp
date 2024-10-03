@@ -26,12 +26,14 @@ if not database_exists(engine.url):
     create_database(engine.url)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# fixture for db creation
 @pytest.fixture(scope="function")
 def test_db():
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
 
+# fixture for db session
 @pytest.fixture(scope="function")
 def db_session(test_db):
     connection = engine.connect()
@@ -42,6 +44,7 @@ def db_session(test_db):
     transaction.rollback()
     connection.close()
 
+# fixture for db client
 @pytest.fixture(scope="function")
 def client(db_session):
     def override_get_db():

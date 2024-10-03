@@ -5,6 +5,7 @@ import uuid
 
 Base = declarative_base()
 
+# User schema to save the object in database
 class User(Base):
     __tablename__ = 'users'
 

@@ -22,21 +22,11 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# @app.on_event('startup')
-# async def startup():
-#     logger.info("Startup!!")
-
-#     try:
-#         engine = get_engine()
-#         if not database_exists(engine.url):
-#             create_database(engine.url)
-#             logger.info('Database created successfully!!')
-        
-#         User.metadata.create_all(bind=get_engine())
-#         logger.info("Database tables created successfully!!")
-#     except OperationalError as e:
-#         logger.error(f"Database connection error during startup: {e}")
-
+'''
+Handle lifespan events like startup and shutdown
+  startup: create the database and tables if not created 
+  shutdown: do the operations when the server terminates
+'''
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Startup!!")
@@ -64,12 +54,20 @@ HEADERS = {
         "Pragma": 'no-cache',
         "X-Content-Type-Options": 'nosniff'
     }
-
+"""
+Function: authenticate
+Descr: This function authenticates the user based on the Basic Auth token passed to the server
+params: credentials: HTTPBasicCredentials, db: Session
+"""
 def authenticate(credentials: HTTPBasicCredentials = Depends(security), db: Session = Depends(get_database_session)):
 
     try:
         if not get_database_connection():
             return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=HEADERS)
+        
+        if not credentials:
+            logger.info("Credentials not passed!!!")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
         
         user_to_authenticate = credentials.username.strip()
         password_to_authenticate = credentials.password.strip()
@@ -96,11 +94,17 @@ def authenticate(credentials: HTTPBasicCredentials = Depends(security), db: Sess
 
     except Exception as e:
         logger.error(f"Database error... {e}")
-        return Response(status_code=status.HTTP_400_BAD_REQUEST, headers=HEADERS)
+        # return Response(status_code=status.HTTP_400_BAD_REQUEST, headers=HEADERS)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
 '''
 API Endpoints
 '''
+
+"""
+GET: /heatlhz
+Healthcheck endpoint
+"""
 @app.get("/healthz")
 async def healthcheck(request: Request, response: Response):
     # checks for the scenarios when there's a body or query params in the request
@@ -113,6 +117,11 @@ async def healthcheck(request: Request, response: Response):
     
     return Response(status_code=status.HTTP_200_OK, headers=HEADERS)
 
+"""
+/healthz
+POST, PUT, PATCH, DELETE, HEAD, OPTIONS 
+Healthcheck 405: Method Not Allowed
+"""
 @app.post("/healthz")
 @app.put("/healthz")
 @app.patch("/healthz")
@@ -123,6 +132,10 @@ def healthcheck():
     # checks for the scenarios when the method type is not GET
     return Response(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, headers=HEADERS)
 
+"""
+POST: /v1/user
+Create a user
+"""
 @app.post("/v1/user", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
 async def create_user(request: Request, user: UserRequestBodyModel, db: Session = Depends(get_database_session)):
 
@@ -156,6 +169,10 @@ async def create_user(request: Request, user: UserRequestBodyModel, db: Session 
         logger.error(f"Database error... {e}")
         return Response(status_code=status.HTTP_400_BAD_REQUEST, headers=HEADERS)
 
+"""
+GET /v1/user/self
+Get User based on authentication
+"""
 @app.get("/v1/user/self", dependencies=[Depends(authenticate)], response_model=UserSchema)
 async def get_user(request: Request, authenticated_email: str = Depends(authenticate), db: Session = Depends(get_database_session)):
     try:
@@ -185,6 +202,10 @@ async def get_user(request: Request, authenticated_email: str = Depends(authenti
         print(f"Server error... {e}")
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
 
+"""
+PUT: /v1/user/self
+Update user based on authentication
+"""
 @app.put("/v1/user/self", dependencies=[Depends(authenticate)])
 async def update_user(request: Request, user_details: UserUpdateRequestBodyModel, authenticated_email: str = Depends(authenticate),  db: Session = Depends(get_database_session)):
 
@@ -225,10 +246,13 @@ async def update_user(request: Request, user_details: UserUpdateRequestBodyModel
         logger.info(f"Database error... {e}")
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=HEADERS)
 
-@app.head("/users")
-@app.delete("/users")
-@app.options("/users")
-@app.patch("/users")
+"""
+HEAD, DELETE, OPTIONS, PATCH: 405 method not allowed
+"""
+@app.head("/v1/user/self")
+@app.delete("/v1/user/self")
+@app.options("/v1/user/self")
+@app.patch("/v1/user/self")
 def users():
     # checks for the scenarios when the method type is not POST or PUT
     return Response(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, headers=HEADERS)

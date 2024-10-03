@@ -44,7 +44,13 @@ def get_database_connection() -> bool:
     except Exception as e:
         logger.info(f"Error in database connection!  {e}")
         return False
-    
+
+"""
+Function: get_database_session()
+Desc.: Returns the database session
+Params: None
+Return: .Session
+"""  
 def get_database_session():
     try:
         engine = get_engine()

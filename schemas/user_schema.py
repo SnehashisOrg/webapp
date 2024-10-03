@@ -3,6 +3,7 @@ from datetime import datetime
 from uuid import UUID
 from typing import Optional
 
+# User schema
 class UserSchema(BaseModel):
     id: UUID
     email: EmailStr
@@ -16,6 +17,8 @@ class UserSchema(BaseModel):
         read_only_fields = {"id", "account_created", "account_updated"},
         write_only_fields = {"password"}
     )
+
+# User request body schema for POST method
 class UserRequestBodyModel(BaseModel):
     email: EmailStr
     password: str
@@ -26,6 +29,7 @@ class UserRequestBodyModel(BaseModel):
         str_strip_whitespace = True
     )
 
+# User request body schema for PUT method
 class UserUpdateRequestBodyModel(BaseModel):
     first_name: str = Field(None, pattern=r'^[A-Za-z\s]+$')
     last_name: str = Field(None, pattern=r'^[A-Za-z\s]+$')
