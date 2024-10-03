@@ -1,8 +1,10 @@
 from fastapi import FastAPI, Request, Response, HTTPException, status, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from sqlalchemy_utils import database_exists, create_database
+from sqlalchemy.exc import OperationalError
 from models.user import User, Base
 from schemas.user_schema import UserSchema, UserRequestBodyModel, UserUpdateRequestBodyModel
 from database import get_database_connection, get_database_session, get_engine, DB_CONNECTION_STRING
@@ -11,7 +13,6 @@ import uvicorn
 import json
 import logging
 import bcrypt
-import secrets
 
 # the main entrypoint to use FastAPI.
 app = FastAPI()
@@ -20,41 +21,55 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-engine = get_engine()
-
-if not database_exists(engine.url):
-    create_database(engine.url)
-
 @app.on_event('startup')
 async def startup():
     logger.info("Startup!!")
-    User.metadata.create_all(bind=get_engine())
+
+    try:
+        engine = get_engine()
+        if not database_exists(engine.url):
+            create_database(engine.url)
+            logger.info('Database created successfully!!')
+        
+        User.metadata.create_all(bind=get_engine())
+        logger.info("Database tables created successfully!!")
+    except OperationalError as e:
+        logger.error(f"Database connection error during startup: {e}")
 
 security = HTTPBasic()
 
 def authenticate(credentials: HTTPBasicCredentials = Depends(security), db: Session = Depends(get_database_session)):
-    user_to_authenticate = credentials.username.strip()
-    password_to_authenticate = credentials.password.strip()
 
-    user = db.query(User).filter(User.email == user_to_authenticate).first()
+    try:
+        if not get_database_connection():
+            return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=HEADERS)
+        
+        user_to_authenticate = credentials.username.strip()
+        password_to_authenticate = credentials.password.strip()
 
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials!",
-            headers={'WWW-Authenticate': "Basic"}
-        )
+        user = db.query(User).filter(User.email == user_to_authenticate).first()
 
-    dehashed_password = bcrypt.checkpw(password_to_authenticate.encode('utf-8'), user.password.encode('utf-8'))
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials!",
+                headers={'WWW-Authenticate': "Basic"}
+            )
 
-    if not dehashed_password:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials!",
-            headers={'WWW-Authenticate': "Basic"}
-        )
+        dehashed_password = bcrypt.checkpw(password_to_authenticate.encode('utf-8'), user.password.encode('utf-8'))
 
-    return user.email
+        if not dehashed_password:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials!",
+                headers={'WWW-Authenticate': "Basic"}
+            )
+
+        return user.email
+
+    except Exception as e:
+        logger.error(f"Database error... {e}")
+        return Response(status_code=status.HTTP_400_BAD_REQUEST, headers=HEADERS)
 
 # setting up the headers
 HEADERS = {
@@ -89,9 +104,20 @@ def healthcheck():
     return Response(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, headers=HEADERS)
 
 @app.post("/v1/user", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
-async def create_user(user: UserRequestBodyModel, db: Session = Depends(get_database_session)):
+async def create_user(request: Request, user: UserRequestBodyModel, db: Session = Depends(get_database_session)):
+
+    if request.query_params:
+        logger.info("query params not allowed...")
+        return Response(status_code=status.HTTP_400_BAD_REQUEST)
+
+    if not user.firstname.isalpha() or not user.lastname.isalpha():
+        logger.error(f"Invalid input: firstname='{user.firstname}', lastname='{user.lastname}'")
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"detail": "Firstname and lastname must only contain alphabets."})
 
     try:
+        if not get_database_connection():
+            return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=HEADERS)
+
         if db.query(User).filter(User.email == user.email).first():
             logger.error(f"Database error... User already exists!!")
             return Response(status_code=status.HTTP_400_BAD_REQUEST, headers=HEADERS)
@@ -99,10 +125,10 @@ async def create_user(user: UserRequestBodyModel, db: Session = Depends(get_data
         hashed_password = bcrypt.hashpw(password=user.password.encode('utf-8'), salt=bcrypt.gensalt())
 
         new_user = User(
-            email=user.email, 
+            email=user.email.strip(), 
             password=hashed_password.decode('utf-8'), 
-            firstname=user.firstname, 
-            lastname=user.lastname
+            firstname=user.firstname.strip(), 
+            lastname=user.lastname.strip()
         )
 
         db.add(new_user)
@@ -117,7 +143,15 @@ async def create_user(user: UserRequestBodyModel, db: Session = Depends(get_data
 @app.get("/v1/user/self", dependencies=[Depends(authenticate)], response_model=UserSchema)
 async def get_user(request: Request, authenticated_email: str = Depends(authenticate), db: Session = Depends(get_database_session)):
     try:
+        if not get_database_connection():
+            return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=HEADERS)
+
+        if request.query_params:
+            logger.info("query params not allowed...")
+            return Response(status_code=status.HTTP_400_BAD_REQUEST)
+
         if request.headers.get("content-length") is not None or request.headers.get("content-type") is not None:
+            logger.info("request body is not allowed...")
             return Response(status_code=status.HTTP_400_BAD_REQUEST)
         
         if request.get("body", None) is not None:
@@ -136,25 +170,35 @@ async def get_user(request: Request, authenticated_email: str = Depends(authenti
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 @app.put("/v1/user/self", dependencies=[Depends(authenticate)])
-async def update_user(user_details: UserUpdateRequestBodyModel, authenticated_email: str = Depends(authenticate),  db: Session = Depends(get_database_session)):
+async def update_user(request: Request, user_details: UserUpdateRequestBodyModel, authenticated_email: str = Depends(authenticate),  db: Session = Depends(get_database_session)):
+
+    if request.query_params:
+        logger.info("query params not allowed...")
+        return Response(status_code=status.HTTP_400_BAD_REQUEST)
+
     try:
         user = db.query(User).filter(User.email == authenticated_email).first()
 
         if authenticated_email != user_details.email:
+            logger.info("Updates to email are not allowed...")
             return Response(status_code=status.HTTP_400_BAD_REQUEST)
 
         if not user:
+            logger.info("User not found...")
             return Response(status_code=status.HTTP_404_NOT_FOUND, headers=HEADERS)
 
         if user_details.first_name is not None:
             user.firstname = user_details.first_name
+            logger.info("Updated the first name...")
         
         if user_details.last_name is not None:
             user.lastname = user_details.last_name
+            logger.info("Updated the last name...")
         
         if user_details.password is not None:
             hashed_password = bcrypt.hashpw(password=user_details.password.encode('utf-8'), salt=bcrypt.gensalt())
             user.password = hashed_password.decode('utf-8')
+            logger.info("Updated the password...")
 
         db.commit()
         db.refresh(user)

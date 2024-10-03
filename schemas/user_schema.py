@@ -1,27 +1,32 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from datetime import datetime
 from uuid import UUID
+from typing import Optional
 
 class UserSchema(BaseModel):
     id: UUID
     email: EmailStr
-    firstname: str
-    lastname: str
+    firstname: str = Field(..., pattern=r'^[A-Za-z\s]+$')
+    lastname: str = Field(..., pattern=r'^[A-Za-z\s]+$')
     account_created: datetime
     account_updated: datetime
 
     class Config:
-        orm_mode = True
-        fields = {"id": {"readOnly": True}, "password": {"writeOnly": True}, "account_created": {"readOnly": True}, "account_updated": {"readOnly": True}}
+        from_attributes = True
+        read_only_fields = {"id", "account_created", "account_updated"}
+        write_only_fields = {"password"}
 
 class UserRequestBodyModel(BaseModel):
     email: EmailStr
     password: str
-    firstname: str
-    lastname: str
+    firstname: str = Field(..., pattern=r'^[A-Za-z]+$')
+    lastname: str = Field(..., pattern=r'^[A-Za-z]+$')
 
 class UserUpdateRequestBodyModel(BaseModel):
-    first_name: str = None
-    last_name: str = None
+    first_name: str = Field(None, pattern=r'^[A-Za-z\s]+$')
+    last_name: str = Field(None, pattern=r'^[A-Za-z\s]+$')
     password: str = None
     email: str = None
+
+    class Config:
+        str_strip_whitespace = True
