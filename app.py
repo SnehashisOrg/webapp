@@ -1,8 +1,11 @@
 from fastapi import FastAPI, Request, Response, HTTPException, status, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
+from contextlib import asynccontextmanager
 from sqlalchemy.orm import Session
 from sqlalchemy_utils import database_exists, create_database
+from sqlalchemy.exc import OperationalError
 from models.user import User, Base
 from schemas.user_schema import UserSchema, UserRequestBodyModel, UserUpdateRequestBodyModel
 from database import get_database_connection, get_database_session, get_engine, DB_CONNECTION_STRING
@@ -11,7 +14,6 @@ import uvicorn
 import json
 import logging
 import bcrypt
-import secrets
 
 # the main entrypoint to use FastAPI.
 app = FastAPI()
@@ -20,41 +22,51 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-engine = get_engine()
 
-if not database_exists(engine.url):
-    create_database(engine.url)
-
+'''
+Handle events on startup
+'''
 @app.on_event('startup')
 async def startup():
     logger.info("Startup!!")
-    User.metadata.create_all(bind=get_engine())
+
+    try:
+        engine = get_engine()
+        if not database_exists(engine.url):
+            create_database(engine.url)
+            logger.info('Database created successfully!!')
+        
+        User.metadata.create_all(bind=get_engine())
+        logger.info("Database tables created successfully!!")
+    except OperationalError as e:
+        logger.error(f"Database connection error during startup: {e}")
+
+'''
+Handle lifespan events like startup and shutdown
+  startup: create the database and tables if not created 
+  shutdown: do the operations when the server terminates
+'''
+# issue with below commented code in the droplet, the below block does not get triggered
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     logger.info("Startup!!")
+
+#     try:
+#         engine = get_engine()
+#         if not database_exists(engine.url):
+#             create_database(engine.url)
+#             logger.info('Database created successfully!!')
+        
+#         User.metadata.create_all(bind=get_engine())
+#         logger.info("Database tables created successfully!!")
+#     except OperationalError as e:
+#         logger.error(f"Database connection error during startup: {e}")
+    
+#     yield
+
+#     logger.info("Shutdown!!")
 
 security = HTTPBasic()
-
-def authenticate(credentials: HTTPBasicCredentials = Depends(security), db: Session = Depends(get_database_session)):
-    user_to_authenticate = credentials.username.strip()
-    password_to_authenticate = credentials.password.strip()
-
-    user = db.query(User).filter(User.email == user_to_authenticate).first()
-
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials!",
-            headers={'WWW-Authenticate': "Basic"}
-        )
-
-    dehashed_password = bcrypt.checkpw(password_to_authenticate.encode('utf-8'), user.password.encode('utf-8'))
-
-    if not dehashed_password:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials!",
-            headers={'WWW-Authenticate': "Basic"}
-        )
-
-    return user.email
 
 # setting up the headers
 HEADERS = {
@@ -62,10 +74,57 @@ HEADERS = {
         "Pragma": 'no-cache',
         "X-Content-Type-Options": 'nosniff'
     }
+"""
+Function: authenticate
+Descr: This function authenticates the user based on the Basic Auth token passed to the server
+params: credentials: HTTPBasicCredentials, db: Session
+"""
+def authenticate(credentials: HTTPBasicCredentials = Depends(security), db: Session = Depends(get_database_session)):
+
+    try:
+        if not get_database_connection():
+            return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=HEADERS)
+        
+        if not credentials:
+            logger.info("Credentials not passed!!!")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
+        
+        user_to_authenticate = credentials.username.strip()
+        password_to_authenticate = credentials.password.strip()
+
+        user = db.query(User).filter(User.email == user_to_authenticate).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials!",
+                headers={'WWW-Authenticate': "Basic"}
+            )
+
+        dehashed_password = bcrypt.checkpw(password_to_authenticate.encode('utf-8'), user.password.encode('utf-8'))
+
+        if not dehashed_password:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials!",
+                headers={'WWW-Authenticate': "Basic"}
+            )
+
+        return user.email
+
+    except Exception as e:
+        logger.error(f"Database error... {e}")
+        # return Response(status_code=status.HTTP_400_BAD_REQUEST, headers=HEADERS)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
 
 '''
 API Endpoints
 '''
+
+"""
+GET: /heatlhz
+Healthcheck endpoint
+"""
 @app.get("/healthz")
 async def healthcheck(request: Request, response: Response):
     # checks for the scenarios when there's a body or query params in the request
@@ -78,6 +137,11 @@ async def healthcheck(request: Request, response: Response):
     
     return Response(status_code=status.HTTP_200_OK, headers=HEADERS)
 
+"""
+/healthz
+POST, PUT, PATCH, DELETE, HEAD, OPTIONS 
+Healthcheck 405: Method Not Allowed
+"""
 @app.post("/healthz")
 @app.put("/healthz")
 @app.patch("/healthz")
@@ -88,10 +152,21 @@ def healthcheck():
     # checks for the scenarios when the method type is not GET
     return Response(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, headers=HEADERS)
 
+"""
+POST: /v1/user
+Create a user
+"""
 @app.post("/v1/user", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
-async def create_user(user: UserRequestBodyModel, db: Session = Depends(get_database_session)):
+async def create_user(request: Request, user: UserRequestBodyModel, db: Session = Depends(get_database_session)):
+
+    if request.query_params:
+        logger.info("query params not allowed...")
+        return Response(status_code=status.HTTP_400_BAD_REQUEST)
 
     try:
+        if not get_database_connection():
+            return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=HEADERS)
+
         if db.query(User).filter(User.email == user.email).first():
             logger.error(f"Database error... User already exists!!")
             return Response(status_code=status.HTTP_400_BAD_REQUEST, headers=HEADERS)
@@ -99,10 +174,10 @@ async def create_user(user: UserRequestBodyModel, db: Session = Depends(get_data
         hashed_password = bcrypt.hashpw(password=user.password.encode('utf-8'), salt=bcrypt.gensalt())
 
         new_user = User(
-            email=user.email, 
+            email=user.email.strip(), 
             password=hashed_password.decode('utf-8'), 
-            firstname=user.firstname, 
-            lastname=user.lastname
+            first_name=user.first_name.strip(), 
+            last_name=user.last_name.strip()
         )
 
         db.add(new_user)
@@ -114,10 +189,22 @@ async def create_user(user: UserRequestBodyModel, db: Session = Depends(get_data
         logger.error(f"Database error... {e}")
         return Response(status_code=status.HTTP_400_BAD_REQUEST, headers=HEADERS)
 
+"""
+GET /v1/user/self
+Get User based on authentication
+"""
 @app.get("/v1/user/self", dependencies=[Depends(authenticate)], response_model=UserSchema)
 async def get_user(request: Request, authenticated_email: str = Depends(authenticate), db: Session = Depends(get_database_session)):
     try:
+        if not get_database_connection():
+            return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=HEADERS)
+        
+        if request.query_params:
+            logger.info("query params not allowed...")
+            return Response(status_code=status.HTTP_400_BAD_REQUEST)
+
         if request.headers.get("content-length") is not None or request.headers.get("content-type") is not None:
+            logger.info("request body is not allowed...")
             return Response(status_code=status.HTTP_400_BAD_REQUEST)
         
         if request.get("body", None) is not None:
@@ -135,26 +222,40 @@ async def get_user(request: Request, authenticated_email: str = Depends(authenti
         print(f"Server error... {e}")
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
 
+"""
+PUT: /v1/user/self
+Update user based on authentication
+"""
 @app.put("/v1/user/self", dependencies=[Depends(authenticate)])
-async def update_user(user_details: UserUpdateRequestBodyModel, authenticated_email: str = Depends(authenticate),  db: Session = Depends(get_database_session)):
+async def update_user(request: Request, user_details: UserUpdateRequestBodyModel, authenticated_email: str = Depends(authenticate),  db: Session = Depends(get_database_session)):
+
+    if request.query_params:
+        logger.info("query params not allowed...")
+        return Response(status_code=status.HTTP_400_BAD_REQUEST)
+
     try:
         user = db.query(User).filter(User.email == authenticated_email).first()
 
         if authenticated_email != user_details.email:
+            logger.info("Updates to email are not allowed...")
             return Response(status_code=status.HTTP_400_BAD_REQUEST)
 
         if not user:
+            logger.info("User not found...")
             return Response(status_code=status.HTTP_404_NOT_FOUND, headers=HEADERS)
 
         if user_details.first_name is not None:
-            user.firstname = user_details.first_name
+            user.first_name = user_details.first_name
+            logger.info("Updated the first name...")
         
         if user_details.last_name is not None:
-            user.lastname = user_details.last_name
+            user.last_name = user_details.last_name
+            logger.info("Updated the last name...")
         
         if user_details.password is not None:
             hashed_password = bcrypt.hashpw(password=user_details.password.encode('utf-8'), salt=bcrypt.gensalt())
             user.password = hashed_password.decode('utf-8')
+            logger.info("Updated the password...")
 
         db.commit()
         db.refresh(user)
@@ -165,10 +266,13 @@ async def update_user(user_details: UserUpdateRequestBodyModel, authenticated_em
         logger.info(f"Database error... {e}")
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=HEADERS)
 
-@app.head("/users")
-@app.delete("/users")
-@app.options("/users")
-@app.patch("/users")
+"""
+HEAD, DELETE, OPTIONS, PATCH: 405 method not allowed
+"""
+@app.head("/v1/user/self")
+@app.delete("/v1/user/self")
+@app.options("/v1/user/self")
+@app.patch("/v1/user/self")
 def users():
     # checks for the scenarios when the method type is not POST or PUT
     return Response(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, headers=HEADERS)
