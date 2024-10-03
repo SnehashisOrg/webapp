@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request, Response, HTTPException, status, Depends
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
+from contextlib import asynccontextmanager
 from sqlalchemy.orm import Session
 from sqlalchemy_utils import database_exists, create_database
 from sqlalchemy.exc import OperationalError
@@ -21,8 +22,23 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-@app.on_event('startup')
-async def startup():
+# @app.on_event('startup')
+# async def startup():
+#     logger.info("Startup!!")
+
+#     try:
+#         engine = get_engine()
+#         if not database_exists(engine.url):
+#             create_database(engine.url)
+#             logger.info('Database created successfully!!')
+        
+#         User.metadata.create_all(bind=get_engine())
+#         logger.info("Database tables created successfully!!")
+#     except OperationalError as e:
+#         logger.error(f"Database connection error during startup: {e}")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     logger.info("Startup!!")
 
     try:
@@ -35,8 +51,19 @@ async def startup():
         logger.info("Database tables created successfully!!")
     except OperationalError as e:
         logger.error(f"Database connection error during startup: {e}")
+    
+    yield
+
+    logger.info("Shutdown!!")
 
 security = HTTPBasic()
+
+# setting up the headers
+HEADERS = {
+        "Cache-Control": 'no-cache, no-store, must-revalidate;',
+        "Pragma": 'no-cache',
+        "X-Content-Type-Options": 'nosniff'
+    }
 
 def authenticate(credentials: HTTPBasicCredentials = Depends(security), db: Session = Depends(get_database_session)):
 
@@ -71,13 +98,6 @@ def authenticate(credentials: HTTPBasicCredentials = Depends(security), db: Sess
         logger.error(f"Database error... {e}")
         return Response(status_code=status.HTTP_400_BAD_REQUEST, headers=HEADERS)
 
-# setting up the headers
-HEADERS = {
-        "Cache-Control": 'no-cache, no-store, must-revalidate;',
-        "Pragma": 'no-cache',
-        "X-Content-Type-Options": 'nosniff'
-    }
-
 '''
 API Endpoints
 '''
@@ -110,10 +130,6 @@ async def create_user(request: Request, user: UserRequestBodyModel, db: Session 
         logger.info("query params not allowed...")
         return Response(status_code=status.HTTP_400_BAD_REQUEST)
 
-    if not user.firstname.isalpha() or not user.lastname.isalpha():
-        logger.error(f"Invalid input: firstname='{user.firstname}', lastname='{user.lastname}'")
-        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"detail": "Firstname and lastname must only contain alphabets."})
-
     try:
         if not get_database_connection():
             return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=HEADERS)
@@ -127,8 +143,8 @@ async def create_user(request: Request, user: UserRequestBodyModel, db: Session 
         new_user = User(
             email=user.email.strip(), 
             password=hashed_password.decode('utf-8'), 
-            firstname=user.firstname.strip(), 
-            lastname=user.lastname.strip()
+            first_name=user.first_name.strip(), 
+            last_name=user.last_name.strip()
         )
 
         db.add(new_user)
@@ -145,7 +161,7 @@ async def get_user(request: Request, authenticated_email: str = Depends(authenti
     try:
         if not get_database_connection():
             return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=HEADERS)
-
+        
         if request.query_params:
             logger.info("query params not allowed...")
             return Response(status_code=status.HTTP_400_BAD_REQUEST)
@@ -188,11 +204,11 @@ async def update_user(request: Request, user_details: UserUpdateRequestBodyModel
             return Response(status_code=status.HTTP_404_NOT_FOUND, headers=HEADERS)
 
         if user_details.first_name is not None:
-            user.firstname = user_details.first_name
+            user.first_name = user_details.first_name
             logger.info("Updated the first name...")
         
         if user_details.last_name is not None:
-            user.lastname = user_details.last_name
+            user.last_name = user_details.last_name
             logger.info("Updated the last name...")
         
         if user_details.password is not None:

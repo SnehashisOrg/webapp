@@ -1,3 +1,6 @@
+# do not add the test db file
+test.db
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
