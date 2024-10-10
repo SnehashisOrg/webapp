@@ -1,6 +1,10 @@
 # CSYE6225: Network Structures & Cloud Computing
 
-## Assignment 02
+## Assignment 03 
+
+### Updates to the assignment are as follows:
+<b>1. Branch protection rule:</b> <i>applied on main branch of <b>Org repo</b>; enforced PR check no merge on failed check - <b style="color:green">verified ✅</b></i></br>
+<b>2. GitHub Actions:</b> <i>created and tested for the repo; runs all the pytest unit test cases; creates test mysql database for testing - <b style="color:green">verified ✅</b></i></br>
 
 ### Assignment Stack
 <b>1. Server:</b> <i>Ubuntu 24.04 LTS</i></br>
