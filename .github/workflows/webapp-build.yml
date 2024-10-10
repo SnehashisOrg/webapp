@@ -24,7 +24,7 @@ jobs:
       MYSQL_USER: ${{ secrets.MYSQL_USER }}
       MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
       MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
-      MYSQL_PORT: ${{ secrets.MYSQL_PORT }}
+      MYSQL_PORT: ${{ jobs.test.services.mysql.ports['3306'] }}
       TEST_MYSQL_DATABASE: ${{ secrets.TEST_MYSQL_DATABASE }}
     
     # Steps to run the build
