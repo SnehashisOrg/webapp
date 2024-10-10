@@ -23,7 +23,7 @@ jobs:
     env:
       MYSQL_USER: root
       MYSQL_PASSWORD: password123
-      MYSQL_HOST: localhost
+      MYSQL_HOST: 127.0.0.1
       MYSQL_PORT: 3306
       TEST_MYSQL_DATABASE: test_db
     
@@ -40,7 +40,10 @@ jobs:
     - name: Start MySQL
       run: |
         sudo service mysql start
-        mysql -u${{ env.MYSQL_USER }} -p${{ env.MYSQL_PASSWORD }} -e "CREATE DATABASE IF NOT EXISTS ${{ env.TEST_MYSQL_DATABASE }};"
+        mysql -u root -p${{ env.MYSQL_PASSWORD }} -e "CREATE USER IF NOT EXISTS '${{ env.MYSQL_USER }}'@'localhost' IDENTIFIED BY '${{ env.MYSQL_PASSWORD }}';"
+        mysql -u root -p${{ env.MYSQL_PASSWORD }} -e "GRANT ALL PRIVILEGES ON *.* TO '${{ env.MYSQL_USER }}'@'localhost';"
+        mysql -u root -p${{ env.MYSQL_PASSWORD }} -e "CREATE DATABASE IF NOT EXISTS ${{ env.TEST_MYSQL_DATABASE }};"
+        mysql -u root -p${{ env.MYSQL_PASSWORD }} -e "FLUSH PRIVILEGES;"
   
     
     # Install python dependencies 
