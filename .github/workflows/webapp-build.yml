@@ -9,6 +9,16 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    services:
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          MYSQL_DATABASE: ${{ secrets.TEST_MYSQL_DATABASE }}
+        ports:
+          - 3306
+        options: --health-cmd="mysqladmin ping -h localhost" --health-interval=10s --health-timeout=5s --health-retries=3
+
     # consume secrets
     env:
       MYSQL_USER: ${{ secrets.MYSQL_USER }}
@@ -35,7 +45,7 @@ jobs:
     
     - name: Debug Environment Variables
       run: |
-        echo "MYSQL_USER: $MYSQL_USER"
+        echo "MYSQL_USER: ${{secrets.MYSQL_USER}}"
         echo "MYSQL_HOST: $MYSQL_HOST"
         echo "MYSQL_PORT: $MYSQL_PORT"
         echo "TEST_MYSQL_DATABASE: $TEST_MYSQL_DATABASE"
