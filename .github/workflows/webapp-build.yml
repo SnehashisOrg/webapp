@@ -9,23 +9,23 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    services:
-      mysql:
-        image: mysql:5.7
-        env:
-          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-          MYSQL_DATABASE: ${{ secrets.TEST_MYSQL_DATABASE }}
-        ports:
-          - 3306
-        options: --health-cmd="mysqladmin ping -h localhost" --health-interval=10s --health-timeout=5s --health-retries=3
+    # services:
+    #   mysql:
+    #     image: mysql:5.7
+    #     env:
+    #       MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+    #       MYSQL_DATABASE: ${{ secrets.TEST_MYSQL_DATABASE }}
+    #     ports:
+    #       - 3306
+    #     options: --health-cmd="mysqladmin ping -h localhost" --health-interval=10s --health-timeout=5s --health-retries=3
 
     # consume secrets
     env:
-      MYSQL_USER: ${{ secrets.MYSQL_USER }}
-      MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+      MYSQL_USER: root
+      MYSQL_PASSWORD: password123
       MYSQL_HOST: 127.0.0.1
       MYSQL_PORT: 3306
-      TEST_MYSQL_DATABASE: ${{ secrets.TEST_MYSQL_DATABASE }}
+      TEST_MYSQL_DATABASE: test_db
     
     # Steps to run the build
     steps:
@@ -36,7 +36,13 @@ jobs:
       uses: actions/setup-python@v5.2.0
       with:
         python-version: '3.12'
-     
+    
+    - name: Start MySQL
+      run: |
+        sudo service mysql start
+        mysql -u${{ env.MYSQL_USER }} -p${{ env.MYSQL_PASSWORD }} -e "CREATE DATABASE IF NOT EXISTS ${{ env.TEST_MYSQL_DATABASE }};"
+  
+    
     # Install python dependencies 
     - name: Install dependencies
       run: |
