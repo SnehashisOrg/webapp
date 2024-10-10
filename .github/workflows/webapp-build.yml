@@ -14,7 +14,7 @@ jobs:
 
     # consume secrets
     env:
-      MYSQL_USER: ${{ secrets.MYSQL_USER }}
+      MYSQL_USER: ${{ SECRETS.MYSQL_USER }}
       MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
       MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
       MYSQL_PORT: ${{ secrets.MYSQL_PORT }}
