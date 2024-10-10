@@ -11,12 +11,11 @@ jobs:
 
     # consume secrets
     env:
-      TEST_DB_URL: ${{ secrets.TEST_DB_URL }}
-      DB_HOST: ${{ secrets.DB_HOST }}
-      DB_PORT: ${{ secrets.DB_PORT }}
-      DB_NAME: ${{ secrets.DB_NAME }}
-      DB_USER: ${{ secrets.DB_USER }}
-      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      MYSQL_USER: ${{ secrets.MYSQL_USER }}
+      MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+      MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
+      MYSQL_PORT: ${{ secrets.MYSQL_PORT }}
+      TEST_MYSQL_DATABASE: ${{ secrets.TEST_MYSQL_DATABASE }}
     
     # Steps to run the build
     steps:
