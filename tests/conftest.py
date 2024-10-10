@@ -18,10 +18,10 @@ TEST_HOST = os.getenv("MYSQL_HOST")
 TEST_PORT = os.getenv("MYSQL_PORT")
 TEST_DATABASE = os.getenv("TEST_MYSQL_DATABASE")
 
-print("DEBUG:", TEST_USER, TEST_DATABASE)
-
 # Setup test database
 TEST_DB_URL = f"mysql+pymysql://{TEST_USER}:{TEST_PASSWORD}@{TEST_HOST}:{TEST_PORT}/{TEST_DATABASE}"
+
+print(f"ll{TEST_DB_URL}ll")
 
 engine = create_engine(TEST_DB_URL)
 if not database_exists(engine.url):
