@@ -1,4 +1,4 @@
-name: webapp-build
+name: webapp build ci
 
 # branch condition
 on:
