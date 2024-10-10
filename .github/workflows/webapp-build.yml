@@ -9,12 +9,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    # specify the env which we have to use from github repo
-    environment: webapp-build-env-vars
-
     # consume secrets
     env:
-      MYSQL_USER: ${{ SECRETS.MYSQL_USER }}
+      MYSQL_USER: ${{ secrets.MYSQL_USER }}
       MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
       MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
       MYSQL_PORT: ${{ secrets.MYSQL_PORT }}
