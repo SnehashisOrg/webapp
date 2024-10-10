@@ -23,7 +23,7 @@ jobs:
     env:
       MYSQL_USER: root
       MYSQL_PASSWORD: password123
-      MYSQL_HOST: 127.0.0.1
+      MYSQL_HOST: localhost
       MYSQL_PORT: 3306
       TEST_MYSQL_DATABASE: test_db
     
