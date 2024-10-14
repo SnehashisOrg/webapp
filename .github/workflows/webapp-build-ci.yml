@@ -47,6 +47,10 @@ jobs:
     - name: Install Packer
       uses: hashicorp/setup-packer@main
 
+    # Initialize Packer
+    - name: Initialize Packer
+      uses: packer init webapp.pkr.hcl
+
     # Format Packer template
     - name: Format Packer template
       run: packer fmt webapp.pkr.hcl
