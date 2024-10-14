@@ -49,7 +49,7 @@ jobs:
 
     # Initialize Packer
     - name: Initialize Packer
-      uses: packer init webapp.pkr.hcl
+      run: packer init webapp.pkr.hcl
 
     # Format Packer template
     - name: Format Packer template
