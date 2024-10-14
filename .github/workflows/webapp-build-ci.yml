@@ -42,3 +42,15 @@ jobs:
     # Run unit test cases for the webapp
     - name: Run tests
       run: pytest -v -s ./tests/test_app.py
+
+    # Install Packer
+    - name: Install Packer
+      uses: hashicorp/setup-packer@main
+
+    # Format Packer template
+    - name: Format Packer template
+      run: packer fmt webapp.pkr.hcl
+
+    # Validate Packer template
+    - name: Validate Packer template
+      run: packer validate webapp.pkr.hcl
