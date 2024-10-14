@@ -51,11 +51,6 @@ build {
     destination = "/home/csye6225/requirements.txt"
   }
 
-  provisioner "file" {
-    source      = "app.service"
-    destination = "/tmp/app.service"
-  }
-
   provisioner "shell" {
     inline = [
       "sudo pip3 install -r /home/csye6225/requirements.txt",
