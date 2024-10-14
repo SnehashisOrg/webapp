@@ -61,7 +61,7 @@ jobs:
     - name: Build custom image
       run: |
         packer init .
-        packer build -var app.zip webapp.pkr.hcl
+        packer build -var-file=variables.pkrvars.hcl webapp.pkr.hcl
 
     - name: Clean up
       run: rm app.zip
