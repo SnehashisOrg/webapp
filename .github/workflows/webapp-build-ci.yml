@@ -56,11 +56,15 @@ jobs:
       id: fmt
       run: packer fmt -check -diff .
       continue-on-error: true
-
+    
+    - name: Create Packer variables file
+      run: |
+        echo 'artifact_path = "app.zip"' > variables.pkrvars.hcl
+    
     # Validate Packer template
     - name: Validate Packer template
       id: validate                                        
-      run: packer validate webapp.pkr.hcl
+      run: packer validate -var "artifact_path=app.zip" webapp.pkr.hcl
 
     - name: Check packer fmt results
       if: steps.fmt.outcome == 'failure'

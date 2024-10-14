@@ -1,5 +1,6 @@
 variable "artifact_path" {
   type = string
+  default = "app.zip"
 }
 
 packer {
@@ -26,6 +27,7 @@ source "amazon-ebs" "ubuntu" {
   }
   ssh_username = "ubuntu"
   vpc_id       = "vpc-0a4ad9ede797539a9"
+  subnet_id = "subnet-002af89dae1d04a65"
 }
 
 build {
