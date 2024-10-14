@@ -2,7 +2,7 @@ name: Packer deploy ci
 
 on:
   pull_request:
-    branches: [asg-04-test]
+    branches: [main]
 
 jobs:
   packer-image-deploy:
