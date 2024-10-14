@@ -1,0 +1,12 @@
+[Unit]
+Description=FastAPI Application
+After=network.target
+
+[Service]
+User=csye6225
+WorkingDirectory=/opt/csye6225/app
+ExecStart=/usr/bin/python3 /opt/csye6225/app/app.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

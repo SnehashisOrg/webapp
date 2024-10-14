@@ -1,3 +1,7 @@
+variable "artifact_path" {
+  type = string
+}
+
 packer {
   required_plugins {
     amazon = {
@@ -25,39 +29,56 @@ source "amazon-ebs" "ubuntu" {
 }
 
 build {
-  name = "csye6225-coursework-ubuntu"
-  sources = [
-    "source.amazon-ebs.ubuntu"
-  ]
+  sources = ["source.amazon-ebs.ubuntu"]
 
   provisioner "shell" {
+
+    environment_vars = [
+      "MYSQL_USER=root",
+      "MYSQL_PASSWORD=password123",
+      "MYSQL_HOST=localhost",
+      "MYSQL_PORT=3306",
+      "MYSQL_DATABASE=csye6225",
+      "TEST_MYSQL_DATABASE=test_db",
+    ]
+
     inline = [
-      "sudo apt-get update",
-      "sudo apt-get upgrade -y",
-      "sudo apt-get install -y mysql-server python3 python3-pip",
       "sudo useradd -m -s /usr/sbin/nologin csye6225",
-      "sudo groupadd csye6225",
-      "sudo usermod -aG csye6225 csye6225"
+      "sudo mkdir -p /opt/csye6225/app",
+      "sudo chown csye6225:csye6225 /opt/csye6225/app"
     ]
   }
 
   provisioner "file" {
-    source      = "app.py"
-    destination = "/home/csye6225/app.py"
+    source      = var.artifact_path
+    destination = "/tmp/app.zip"
   }
 
   provisioner "file" {
-    source      = "requirements.txt"
-    destination = "/home/csye6225/requirements.txt"
+    source      = "app.service"
+    destination = "/tmp/app.service"
   }
 
   provisioner "shell" {
+
+    environment_vars = [
+      "MYSQL_USER=root",
+      "MYSQL_PASSWORD=password123",
+      "MYSQL_HOST=localhost",
+      "MYSQL_PORT=3306",
+      "MYSQL_DATABASE=csye6225",
+      "TEST_MYSQL_DATABASE=test_db",
+    ]
+
     inline = [
-      "sudo pip3 install -r /home/csye6225/requirements.txt",
-      "sudo chown -R csye6225:csye6225 /home/csye6225",
-      "sudo mv /tmp/app.service /etc/systemd/system/app.service",
+      "sudo chown -R csye6225:csye6225 /opt/csye6225/app",
+      "sudo apt-get update",
+      "sudo apt-get install -y python3 python3-pip",
+      "sudo -u csye6225 unzip /tmp/app.zip -d /opt/csye6225/app",
+      "sudo -u csye6225 pip3 install -r /opt/csye6225/app/requirements.txt",
+      "sudo mv /tmp/app.service /etc/systemd/system/",
       "sudo systemctl daemon-reload",
-      "sudo systemctl enable app"
+      "sudo systemctl enable csye6225"
     ]
   }
 }
