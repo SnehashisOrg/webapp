@@ -87,7 +87,7 @@ build {
 
     inline = [
       //   "sudo groupadd csye6225",
-      "sudo useradd -m -g csye6225 -s /usr/sbin/nologin csye6225",
+    //   "sudo useradd -m -g csye6225 -s /usr/sbin/nologin csye6225",
       "sudo mkdir -p /opt/csye6225/app",
       "sudo mkdir -p /opt/csye6225/venv",
       "sudo chown -R csye6225:csye6225 /opt/csye6225",
