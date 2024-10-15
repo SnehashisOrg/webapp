@@ -49,7 +49,7 @@ jobs:
 
     - name: Build application artifact
       run: |
-        zip -r app.zip app.py requirements.txt 
+        zip -r app.zip app.py requirements.txt models schemas tests database.py README.md app.service
 
     - name: Set up Packer
       uses: hashicorp/setup-packer@main

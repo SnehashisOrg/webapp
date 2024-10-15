@@ -20,6 +20,10 @@ source "amazon-ebs" "ubuntu" {
   ssh_username  = "ubuntu"
   vpc_id        = "vpc-06fa733b7d5a8ab52"
   ssh_timeout   = "20m"
+  
+  environment_vars = [
+    "DEBIAN_FRONTEND=noninteractive"
+  ]
 }
 
 build {
@@ -69,11 +73,14 @@ build {
 
     inline = [
       "sudo chown -R csye6225:csye6225 /opt/csye6225/app",
+      "echo chown worked",
       "sudo apt-get update",
       "sudo apt-get install -y mysql-server",
       "sudo apt-get install -y unzip",
       "sudo apt-get install -y python3 python3-pip python3-venv",
+      "echo all installation worked fine",
       "sudo -u csye6225 python3 -m venv /opt/csye6225/venv",
+      "echo created venv",
       "sudo -u csye6225 unzip /tmp/app.zip -d /opt/csye6225/app",
       "sudo -u csye6225 /opt/csye6225/venv/bin/ pip3 install -r /opt/csye6225/app/requirements.txt",
       "sudo mv /tmp/app.service /etc/systemd/system/",
