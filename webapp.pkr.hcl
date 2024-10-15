@@ -16,9 +16,10 @@ source "amazon-ebs" "ubuntu" {
   ami_name      = "csye6225-coursework-${formatdate("YYYY-MM-DD-hh-mm-ss", timestamp())}"
   instance_type = "t2.micro"
   region        = "us-east-1"
-  source_ami   = "ami-0866a3c8686eaeeba"
-  ssh_username = "ubuntu"
-  vpc_id       = "vpc-06fa733b7d5a8ab52"
+  source_ami    = "ami-0866a3c8686eaeeba"
+  ssh_username  = "ubuntu"
+  vpc_id        = "vpc-06fa733b7d5a8ab52"
+  ssh_timeout   = "20m"
 }
 
 build {
@@ -54,6 +55,9 @@ build {
 
   provisioner "shell" {
 
+    expect_disconnect = true
+    skip_clean        = true
+
     environment_vars = [
       "MYSQL_USER=root",
       "MYSQL_PASSWORD=password123",
@@ -66,6 +70,8 @@ build {
     inline = [
       "sudo chown -R csye6225:csye6225 /opt/csye6225/app",
       "sudo apt-get update",
+      "sudo apt-get install -y mysql-server",
+      "sudo apt-get install -y unzip",
       "sudo apt-get install -y python3 python3-pip",
       "sudo -u csye6225 unzip /tmp/app.zip -d /opt/csye6225/app",
       "sudo -u csye6225 pip3 install -r /opt/csye6225/app/requirements.txt",
