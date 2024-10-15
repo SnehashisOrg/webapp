@@ -97,7 +97,7 @@ build {
       "sudo unzip /tmp/app.zip -d /opt/csye6225/app",
       "sudo chown -R csye6225:csye6225 /opt/csye6225/app",
       "sudo -u csye6225 /opt/csye6225/venv/bin/pip install -r /opt/csye6225/app/requirements.txt",
-      "sudo mv /tmp/app.service /etc/systemd/system/",
+      "sudo mv /opt/csye6225/app/app.service /etc/systemd/system/",
       "sudo systemctl daemon-reload",
       "sudo systemctl enable csye6225"
     ]
