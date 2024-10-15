@@ -20,10 +20,6 @@ source "amazon-ebs" "ubuntu" {
   ssh_username  = "ubuntu"
   vpc_id        = "vpc-06fa733b7d5a8ab52"
   ssh_timeout   = "20m"
-  
-  environment_vars = [
-    "DEBIAN_FRONTEND=noninteractive"
-  ]
 }
 
 build {
