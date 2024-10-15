@@ -8,7 +8,7 @@ from datetime import datetime
 /healthz endpoint unit tests
 """
 def test_healthcheck(client):
-    response = client.get("/healthz")
+    response = client.get("/health")
     assert response.status_code == status.HTTP_200_OK
 
 def test_healthcheck_with_query_params(client):
