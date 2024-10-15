@@ -99,7 +99,7 @@ build {
       "sudo -u csye6225 /opt/csye6225/venv/bin/pip install -r /opt/csye6225/app/requirements.txt",
       "sudo mv /opt/csye6225/app/app.service /etc/systemd/system/",
       "sudo systemctl daemon-reload",
-      "sudo systemctl enable csye6225"
+      "sudo systemctl enable app"
     ]
 
   }
