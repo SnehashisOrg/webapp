@@ -42,6 +42,10 @@ jobs:
     # Run unit test cases for the webapp
     - name: Run tests
       run: pytest -v -s ./tests/test_app.py
+    
+    - name: Build application artifact
+      run: |
+        zip -r app.zip app.py requirements.txt models schemas tests database.py README.md app.service
 
     # Install Packer
     - name: Install Packer
@@ -77,3 +81,6 @@ jobs:
       run: |
         echo "Packer template validation failed. Please fix the errors and try again."
         exit 1
+      
+    - name: Clean up
+      run: rm app.zip
