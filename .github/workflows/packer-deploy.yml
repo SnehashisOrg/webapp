@@ -112,18 +112,19 @@ jobs:
       run: |
         packer init .
         packer build -var-file=variables.pkrvars.hcl webapp.pkr.hcl
+
+    - name: Extract AMI ID
+      run: |
+        AMI_ID=$(jq -r '.builds[-1].artifact_id' manifest.json | cut -d':' -f2)
+        echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
+        echo "Created AMI ID: $AMI_ID"
     
     - name: Share AMI with DEMO account
       run: |
-            AMI_ID=$(jq -r '.builds[-1].artifact_id' manifest.json | cut -d ":" -f2)
-            aws ec2 modify-image-attribute \
-            --image-id $AMI_ID \
-            --launch-permission "Add=[{UserId=${{ env.DEMO_ACCOUNT_ID }}}]" \
-            --region ${{ env.AWS_REGION }}
-      env:
-            AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-            AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
+       aws ec2 modify-image-attribute \
+       --image-id ${{ env.AMI_ID }} \
+       --launch-permission "Add=[{UserId=${{ env.DEMO_ACCOUNT_ID }}}]" \
+       --region ${{ env.AWS_REGION }}
     
     # step for cleaning up the zip file that is created to run packer validate as it needs to look for app.zip in the working dir
     - name: Clean up

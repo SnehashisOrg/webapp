@@ -1,5 +1,12 @@
 # CSYE6225: Network Structures & Cloud Computing
 
+## Assignment 04
+
+### Updates to the assignment are as follows:
+<b>1. New workflow updates:</b> <i> applied packer format and packer validate checks in the workflow<b style="color:green">verified ✅</b></i></br>
+<b>2. New GitHub Action:</b> <i>new github action which does the above checks and builds AMI in DEV account and share the AMI to DEMO account - but actioned only in PR merge <b style="color:green">verified ✅</b></i></br>
+
+
 ## Assignment 03 
 
 ### Updates to the assignment are as follows:
