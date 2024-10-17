@@ -16,6 +16,10 @@ jobs:
       MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
       MYSQL_PORT: ${{ secrets.MYSQL_PORT }}
       TEST_MYSQL_DATABASE: ${{ secrets.TEST_MYSQL_DATABASE }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_PACKER_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_PACKER_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      DEMO_ACCOUNT_ID: ${{ secrets.DEMO_ACCOUNT_ID }}
     
     # Steps to run the build
     steps:
@@ -88,17 +92,17 @@ jobs:
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
+        aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
 
     - name: Share AMI with DEMO account
       run: |
           AMI_ID=ami-0866b2bf94fa9f4cc
           aws ec2 modify-image-attribute \
             --image-id $AMI_ID \
-            --launch-permission "Add=[{UserId=${{ secrets.DEMO_ACCOUNT_ID }}}]" \
-            --region ${{ secrets.AWS_REGION }}
+            --launch-permission "Add=[{UserId=${{ env.DEMO_ACCOUNT_ID }}}]" \
+            --region ${{ env.AWS_REGION }}
     
     # step for cleaning up the zip file that is created to run packer validate as it needs to look for app.zip in the working dir
     - name: Clean up
