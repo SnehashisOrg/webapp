@@ -61,6 +61,7 @@ jobs:
       run: packer fmt -check -diff .
       continue-on-error: true
     
+    # create packer vars file on the fly as its gitignored for sensitivity
     - name: Create Packer variables file
       run: |
         echo 'artifact_path = "app.zip"' > variables.pkrvars.hcl
@@ -69,18 +70,21 @@ jobs:
     - name: Validate Packer template
       id: validate                                        
       run: packer validate -var-file=variables.pkrvars.hcl webapp.pkr.hcl
-
+    
+    # add constraint for packer fmt
     - name: Check packer fmt results
       if: steps.fmt.outcome == 'failure'
       run: |
         echo "Packer template is not properly formatted. Please run 'packer fmt' and commit the changes."
         exit 1
-
+    
+    # add constraint for packer validate
     - name: Check packer validate results
       if: steps.validate.outcome == 'failure'
       run: |
         echo "Packer template validation failed. Please fix the errors and try again."
         exit 1
-      
+    
+    # step for cleaning up the zip file that is created to run packer validate as it needs to look for app.zip in the working dir
     - name: Clean up
       run: rm app.zip

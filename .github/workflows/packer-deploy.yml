@@ -22,46 +22,92 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION }}
     
     steps:
+    # check out github actions
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4.2.1
     
+    # setup AWS credentials - used a AWS IAM user - csye6225-aws-packer-usr 
+    # this user has only limited access which are ec2 resources access
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
-
+    
+    # setup python 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5.2.0
       with:
         python-version: '3.12'
-
+    
+    # install python packages
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
     
-    - name: Start MySQL
+    # Setup test database to run tests
+    - name: Start MySQL and create test database
+      run: |
+        sudo /etc/init.d/mysql start
+        mysql -e "CREATE DATABASE IF NOT EXISTS $TEST_MYSQL_DATABASE;" -u$MYSQL_USER -p$MYSQL_PASSWORD
+
+    # Run unit test cases for the webapp
+    - name: Run tests
+      run: pytest -v -s ./tests/test_app.py
+    
+    # create app database
+    - name: Start MySQL and create app database
       run: |
         sudo /etc/init.d/mysql start
         mysql -e "CREATE DATABASE IF NOT EXISTS $MYSQL_DATABASE;" -u$MYSQL_USER -p$MYSQL_PASSWORD
-
-    - name: Build application artifact
+    
+    # zip the application artifacts
+    - name: Zip application artifact
       run: |
         zip -r app.zip app.py requirements.txt models schemas tests database.py README.md app.service
-
+    
+    # Install Packer
     - name: Set up Packer
       uses: hashicorp/setup-packer@main
     
+    # create packer vars file on the fly as its gitignored for sensitivity
     - name: Create Packer variables file
       run: |
         echo 'artifact_path = "app.zip"' > variables.pkrvars.hcl
+    
+    # Format Packer template
+    - name: Format Packer template
+      id: fmt
+      run: packer fmt -check -diff .
+      continue-on-error: true
+    
+    # Validate Packer template
+    - name: Validate Packer template
+      id: validate                                        
+      run: packer validate -var-file=variables.pkrvars.hcl webapp.pkr.hcl
 
+    # add constraint for packer fmt
+    - name: Check packer fmt results
+      if: steps.fmt.outcome == 'failure'
+      run: |
+        echo "Packer template is not properly formatted. Please run 'packer fmt' and commit the changes."
+        exit 1
+    
+    # add constraint for packer validate
+    - name: Check packer validate results
+      if: steps.validate.outcome == 'failure'
+      run: |
+        echo "Packer template validation failed. Please fix the errors and try again."
+        exit 1
+    
+    # build AMI
     - name: Build custom image
       run: |
         packer init .
         packer build -var-file=variables.pkrvars.hcl webapp.pkr.hcl
-
+    
+    # step for cleaning up the zip file that is created to run packer validate as it needs to look for app.zip in the working dir
     - name: Clean up
       run: rm app.zip
