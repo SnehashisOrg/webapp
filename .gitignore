@@ -1,3 +1,7 @@
+# packer files
+*.pkrvars.hcl
+app.zip
+
 # do not add the test db file
 test.db
 
