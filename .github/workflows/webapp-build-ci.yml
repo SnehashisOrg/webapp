@@ -17,10 +17,6 @@ jobs:
       MYSQL_PORT: ${{ secrets.MYSQL_PORT }}
       TEST_MYSQL_DATABASE: ${{ secrets.TEST_MYSQL_DATABASE }}
       MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_PACKER_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_PACKER_SECRET_ACCESS_KEY }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      DEMO_ACCOUNT_ID: ${{ secrets.DEMO_ACCOUNT_ID }}
     
     # Steps to run the build
     steps:
@@ -89,34 +85,6 @@ jobs:
       run: |
         echo "Packer template validation failed. Please fix the errors and try again."
         exit 1
-
-    # setup AWS credentials - used a AWS IAM user - csye6225-aws-packer-usr 
-    # this user has only limited access which are ec2 resources access
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
-    
-    # build AMI
-    - name: Build custom image
-      run: |
-        packer init .
-        packer build -var-file=variables.pkrvars.hcl webapp.pkr.hcl
-
-    - name: Extract AMI ID
-      run: |
-        AMI_ID=$(jq -r '.builds[-1].artifact_id' manifest.json | cut -d':' -f2)
-        echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
-        echo "Created AMI ID: $AMI_ID"
-    
-    - name: Share AMI with DEMO account
-      run: |
-       aws ec2 modify-image-attribute \
-       --image-id ${{ env.AMI_ID }} \
-       --launch-permission "Add=[{UserId=${{ env.DEMO_ACCOUNT_ID }}}]" \
-       --region ${{ env.AWS_REGION }}
     
     # step for cleaning up the zip file that is created to run packer validate as it needs to look for app.zip in the working dir
     - name: Clean up
