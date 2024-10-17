@@ -28,7 +28,7 @@ build {
   provisioner "shell" {
 
     environment_vars = [
-      "MYSQL_USER=root",
+      "MYSQL_USER=ubuntu",
       "MYSQL_PASSWORD=password123",
       "MYSQL_HOST=localhost",
       "MYSQL_PORT=3306",
@@ -60,7 +60,7 @@ build {
     skip_clean        = true
 
     environment_vars = [
-      "MYSQL_USER=root",
+      "MYSQL_USER=ubuntu",
       "MYSQL_PASSWORD=password123",
       "MYSQL_HOST=localhost",
       "MYSQL_PORT=3306",
@@ -103,7 +103,7 @@ build {
   provisioner "shell" {
     environment_vars = [
       "DEBIAN_FRONTEND=noninteractive",
-      "MYSQL_USER=root",
+      "MYSQL_USER=ubuntu",
       "MYSQL_PASSWORD=password123",
       "MYSQL_HOST=localhost",
       "MYSQL_PORT=3306",

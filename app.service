@@ -4,6 +4,11 @@ After=network.target
 
 [Service]
 User=csye6225
+Environment="MYSQL_HOST=localhost"
+Environment="MYSQL_USER=ubuntu"
+Environment="MYSQL_PASSWORD=password123"
+Environment="MYSQL_DATABASE=csye6225"
+Environment="MYSQL_PORT=3306"
 WorkingDirectory=/opt/csye6225/app
 ExecStart=/opt/csye6225/venv/bin/python /opt/csye6225/app/app.py
 Restart=always
