@@ -88,7 +88,10 @@ build {
 
   provisioner "shell" {
     inline = [
-      "sudo mysql -e \"ALTER USER 'ubuntu'@'localhost' IDENTIFIED WITH mysql_native_password BY 'password123'; FLUSH PRIVILEGES;\""
+      "sudo systemctl start mysql",
+      "sudo systemctl enable mysql",
+      "sudo mysql -e \"CREATE USER IF NOT EXISTS 'ubuntu'@'localhost'; ALTER USER 'ubuntu'@'localhost' IDENTIFIED WITH mysql_native_password BY 'password123'; FLUSH PRIVILEGES;\"",
+      "sudo systemctl restart mysql"
     ]
   }
 }
