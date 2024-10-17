@@ -123,8 +123,8 @@ jobs:
       run: |
        aws ec2 modify-image-attribute \
        --image-id ${{ env.AMI_ID }} \
-       --launch-permission "Add=[{UserId=${{ secrets.DEMO_ACCOUNT_ID }}}]" \
-       --region ${{ secrets.AWS_REGION }}
+       --launch-permission "Add=[{UserId=${{ env.DEMO_ACCOUNT_ID }}}]" \
+       --region ${{ env.AWS_REGION }}
     
     # step for cleaning up the zip file that is created to run packer validate as it needs to look for app.zip in the working dir
     - name: Clean up
