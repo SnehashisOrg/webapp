@@ -64,7 +64,7 @@ jobs:
     # Validate Packer template
     - name: Validate Packer template
       id: validate                                        
-      run: packer validate -var-file="variables.pkrvars.hcl" webapp.pkr.hcl
+      run: packer validate -var-file=variables.pkrvars.hcl webapp.pkr.hcl
 
     - name: Check packer fmt results
       if: steps.fmt.outcome == 'failure'
