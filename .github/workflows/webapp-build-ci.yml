@@ -6,7 +6,7 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  webapp-build:
     runs-on: ubuntu-latest
 
     # consume secrets
