@@ -6,7 +6,7 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  webapp-build:
     runs-on: ubuntu-latest
 
     # consume secrets
@@ -42,3 +42,45 @@ jobs:
     # Run unit test cases for the webapp
     - name: Run tests
       run: pytest -v -s ./tests/test_app.py
+    
+    - name: Build application artifact
+      run: |
+        zip -r app.zip app.py requirements.txt models schemas tests database.py README.md app.service
+
+    # Install Packer
+    - name: Install Packer
+      uses: hashicorp/setup-packer@main
+
+    # Initialize Packer
+    - name: Initialize Packer
+      run: packer init webapp.pkr.hcl
+
+    # Format Packer template
+    - name: Format Packer template
+      id: fmt
+      run: packer fmt -check -diff .
+      continue-on-error: true
+    
+    - name: Create Packer variables file
+      run: |
+        echo 'artifact_path = "app.zip"' > variables.pkrvars.hcl
+    
+    # Validate Packer template
+    - name: Validate Packer template
+      id: validate                                        
+      run: packer validate -var-file=variables.pkrvars.hcl webapp.pkr.hcl
+
+    - name: Check packer fmt results
+      if: steps.fmt.outcome == 'failure'
+      run: |
+        echo "Packer template is not properly formatted. Please run 'packer fmt' and commit the changes."
+        exit 1
+
+    - name: Check packer validate results
+      if: steps.validate.outcome == 'failure'
+      run: |
+        echo "Packer template validation failed. Please fix the errors and try again."
+        exit 1
+      
+    - name: Clean up
+      run: rm app.zip
