@@ -4,9 +4,9 @@ variable "artifact_path" {
 }
 
 variable "demo_account_id" {
-  type    = string
+  type        = string
   description = "AWS account ID of the demo account"
-  default = "783764584160"
+  default     = "783764584160"
 }
 
 variable "aws_region" {
@@ -78,6 +78,6 @@ build {
     s3_bucket_name      = "csye6225-dev-bkt"
     ami_name            = "webapp-shared-{{timestamp}}"
     ami_description     = "Webapp AMI shared with DEMO account"
-    ami_users          = [var.demo_account_id]
+    ami_users           = [var.demo_account_id]
   }
 }
