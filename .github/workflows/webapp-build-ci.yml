@@ -16,6 +16,7 @@ jobs:
       MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
       MYSQL_PORT: ${{ secrets.MYSQL_PORT }}
       TEST_MYSQL_DATABASE: ${{ secrets.TEST_MYSQL_DATABASE }}
+      MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
     
     # Steps to run the build
     steps:

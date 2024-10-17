@@ -19,7 +19,7 @@ source "amazon-ebs" "ubuntu" {
   source_ami    = "ami-0866a3c8686eaeeba"
   ssh_username  = "ubuntu"
   vpc_id        = "vpc-06fa733b7d5a8ab52"
-  ssh_timeout   = "20m"
+  ssh_timeout   = "21m"
 }
 
 build {

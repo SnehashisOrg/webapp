@@ -23,6 +23,18 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def init_database():
+    try:
+        engine = get_engine()
+        if not database_exists(engine.url):
+            create_database(engine.url)
+            logger.info('Database created successfully!!')
+        
+        User.metadata.create_all(bind=get_engine())
+        logger.info("Database tables created successfully!!")
+    except OperationalError as e:
+        logger.error(f"Database connection error during startup: {e}")
+
 '''
 Handle events on startup
 '''
@@ -279,4 +291,5 @@ def users():
 
 # Code entrypoint
 if __name__ == "__main__":
+    init_database()
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
