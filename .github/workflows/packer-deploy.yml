@@ -71,6 +71,10 @@ jobs:
     # Install Packer
     - name: Set up Packer
       uses: hashicorp/setup-packer@main
+
+    # Initialize Packer
+    - name: Initialize Packer
+      run: packer init webapp.pkr.hcl
     
     # create packer vars file on the fly as its gitignored for sensitivity
     - name: Create Packer variables file
