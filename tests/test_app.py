@@ -49,7 +49,7 @@ def test_create_user(client, db_session):
         "first_name": "Test",
         "last_name": "User"
     }
-    response = client.post("/v1/user", json=user_data)
+    response = client.post("/v2/user", json=user_data)
     assert response.status_code == status.HTTP_201_CREATED
     assert response.json()["email"] == "test@example.com"
 
@@ -65,7 +65,7 @@ def test_create_user_invalid_name(client):
         "first_name": "Test123",
         "last_name": "User"
     }
-    response = client.post("/v1/user", json=user_data)
+    response = client.post("/v2/user", json=user_data)
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 def test_create_duplicate_user(client, db_session):
@@ -75,8 +75,8 @@ def test_create_duplicate_user(client, db_session):
         "first_name": "Duplicate",
         "last_name": "User"
     }
-    client.post("/v1/user", json=user_data)
-    response = client.post("/v1/user", json=user_data)
+    client.post("/v2/user", json=user_data)
+    response = client.post("/v2/user", json=user_data)
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 def test_get_user(client, db_session):
@@ -87,17 +87,17 @@ def test_get_user(client, db_session):
         "last_name": "User"
     }
     
-    test_user_created = client.post("/v1/user", json=user_data)
+    test_user_created = client.post("/v2/user", json=user_data)
 
     assert test_user_created.json()['first_name'] == "Get"
     assert test_user_created.json()["email"] == "getuser@example.com"
 
-    response = client.get("/v1/user/self", auth=("getuser@example.com", "testpassword"))
+    response = client.get("/v2/user/self", auth=("getuser@example.com", "testpassword"))
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["email"] == "getuser@example.com"
 
 def test_get_user_unauthorized(client):
-    response = client.get("/v1/user/self")
+    response = client.get("/v2/user/self")
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 def test_update_user(client, db_session):
@@ -107,14 +107,14 @@ def test_update_user(client, db_session):
         "first_name": "Update",
         "last_name": "User"
     }
-    client.post("/v1/user", json=user_data)
+    client.post("/v2/user", json=user_data)
 
     update_data = {
         "email": "updateuser@example.com",
         "first_name": "UpdatedName",
         "last_name": "UpdatedUser"
     }
-    response = client.put("/v1/user/self", json=update_data, auth=("updateuser@example.com", "testpassword"))
+    response = client.put("/v2/user/self", json=update_data, auth=("updateuser@example.com", "testpassword"))
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
     user = db_session.query(User).filter(User.email == "updateuser@example.com").first()
@@ -128,14 +128,14 @@ def test_update_user_email(client):
         "first_name": "No",
         "last_name": "Update"
     }
-    client.post("/v1/user", json=user_data)
+    client.post("/v2/user", json=user_data)
 
     update_data = {
         "email": "newupdate@example.com",
         "first_name": "No",
         "last_name": "Update"
     }
-    response = client.put("/v1/user/self", json=update_data, auth=("noupdate@example.com", "testpassword"))
+    response = client.put("/v2/user/self", json=update_data, auth=("noupdate@example.com", "testpassword"))
     assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 def test_authenticate(client, db_session):
@@ -145,9 +145,9 @@ def test_authenticate(client, db_session):
         "first_name": "Auth",
         "last_name": "User"
     }
-    client.post("/v1/user", json=user_data)
+    client.post("/v2/user", json=user_data)
 
-    response = client.get("/v1/user/self", auth=("auth@example.com", "testpassword"))
+    response = client.get("/v2/user/self", auth=("auth@example.com", "testpassword"))
     assert response.status_code == status.HTTP_200_OK
 
 def test_password_hashing(client, db_session):
@@ -157,7 +157,7 @@ def test_password_hashing(client, db_session):
         "first_name": "Hash",
         "last_name": "User"
     }
-    client.post("/v1/user", json=user_data)
+    client.post("/v2/user", json=user_data)
 
     user = db_session.query(User).filter(User.email == "hash@example.com").first()
     assert bcrypt.checkpw("testpassword".encode('utf-8'), user.password.encode('utf-8'))
