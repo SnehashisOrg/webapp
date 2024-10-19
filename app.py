@@ -165,10 +165,10 @@ def healthcheck():
     return Response(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, headers=HEADERS)
 
 """
-POST: /v1/user
+POST: /v2/user
 Create a user
 """
-@app.post("/v1/user", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
+@app.post("/v2/user", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
 async def create_user(request: Request, user: UserRequestBodyModel, db: Session = Depends(get_database_session)):
 
     if request.query_params:
@@ -205,7 +205,7 @@ async def create_user(request: Request, user: UserRequestBodyModel, db: Session 
 GET /v1/user/self
 Get User based on authentication
 """
-@app.get("/v1/user/self", dependencies=[Depends(authenticate)], response_model=UserSchema)
+@app.get("/v2/user/self", dependencies=[Depends(authenticate)], response_model=UserSchema)
 async def get_user(request: Request, authenticated_email: str = Depends(authenticate), db: Session = Depends(get_database_session)):
     try:
         if not get_database_connection():
@@ -235,10 +235,10 @@ async def get_user(request: Request, authenticated_email: str = Depends(authenti
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 """
-PUT: /v1/user/self
+PUT: /v2/user/self
 Update user based on authentication
 """
-@app.put("/v1/user/self", dependencies=[Depends(authenticate)])
+@app.put("/v2/user/self", dependencies=[Depends(authenticate)])
 async def update_user(request: Request, user_details: UserUpdateRequestBodyModel, authenticated_email: str = Depends(authenticate),  db: Session = Depends(get_database_session)):
 
     if request.query_params:
@@ -281,10 +281,10 @@ async def update_user(request: Request, user_details: UserUpdateRequestBodyModel
 """
 HEAD, DELETE, OPTIONS, PATCH: 405 method not allowed
 """
-@app.head("/v1/user/self")
-@app.delete("/v1/user/self")
-@app.options("/v1/user/self")
-@app.patch("/v1/user/self")
+@app.head("/v2/user/self")
+@app.delete("/v2/user/self")
+@app.options("/v2/user/self")
+@app.patch("/v2/user/self")
 def users():
     # checks for the scenarios when the method type is not POST or PUT
     return Response(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, headers=HEADERS)
