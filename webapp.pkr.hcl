@@ -3,6 +3,24 @@ variable "artifact_path" {
   default = "app.zip"
 }
 
+variable "aws_region" {
+  type        = string
+  default     = "us-east-1"
+  description = "AWS region"
+}
+
+variable "source_ami" {
+  type        = string
+  default     = "ami-0866a3c8686eaeeba"
+  description = "Ubuntu LTS: AMI Image ID"
+}
+
+variable "ssh_username" {
+  type        = string
+  default     = "ubuntu"
+  description = "SSH username"
+}
+
 packer {
   required_plugins {
     amazon = {
@@ -15,11 +33,22 @@ packer {
 source "amazon-ebs" "ubuntu" {
   ami_name      = "csye6225-coursework-${formatdate("YYYY-MM-DD-hh-mm-ss", timestamp())}"
   instance_type = "t2.micro"
-  region        = "us-east-1"
-  source_ami    = "ami-0866a3c8686eaeeba"
-  ssh_username  = "ubuntu"
+  region        = "${var.aws_region}"
+  source_ami    = "${var.source_ami}"
+  ssh_username  = "${var.ssh_username}"
   vpc_id        = "vpc-06fa733b7d5a8ab52"
-  ssh_timeout   = "21m"
+
+  aws_polling {
+    delay_seconds = 120
+    max_attempts  = 50
+  }
+
+  launch_block_device_mappings {
+    delete_on_termination = true
+    device_name           = "/dev/sda1"
+    volume_size           = 8
+    volume_type           = "gp2"
+  }
 }
 
 build {
