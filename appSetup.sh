@@ -10,11 +10,13 @@ sudo chown -R csye6225:csye6225 /opt/csye6225
 
 sudo apt-get update
 
-sudo apt-get install -y python3-venv unzip python3 python3-pip mysql-server
+sudo apt-get install -y python3-venv unzip python3 python3-pip
 
-sudo systemctl start mysql
+# sudo apt-get install -y python3-venv unzip python3 python3-pip mysql-server
 
-sudo systemctl enable mysql
+# sudo systemctl start mysql
+
+# sudo systemctl enable mysql
 
 sudo -u csye6225 python3 -m venv /opt/csye6225/venv
 
