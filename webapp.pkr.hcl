@@ -84,6 +84,10 @@ build {
     script = "mysqlSetup.sh"
   }
 
+  provisioner "shell" {
+    script = "cloudwatchAgentSetup.sh"
+  }
+
   post-processor "manifest" {
     output     = "manifest.json"
     strip_path = true
