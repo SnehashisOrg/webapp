@@ -1,11 +1,15 @@
 #!/bin/bash
 
+set -e
+
 # Install CloudWatch Agent
-wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
-dpkg -i -E ./amazon-cloudwatch-agent.deb
+sudo wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+sudo dpkg -i -E ./amazon-cloudwatch-agent.deb
+
+sudo mkdir -p /opt/aws/amazon-cloudwatch-agent/bin/
 
 # Create CloudWatch agent configuration file with static log stream name
-cat <<EOT > /opt/aws/amazon-cloudwatch-agent/bin/config.json
+cat <<EOT | sudo tee /opt/aws/amazon-cloudwatch-agent/bin/config.json > /dev/null
 {
     "metrics": {
         "namespace": "CSYE6225/webapp_metrics",
@@ -42,4 +46,4 @@ cat <<EOT > /opt/aws/amazon-cloudwatch-agent/bin/config.json
 EOT
 
 # Start CloudWatch Agent with the new config
-/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/bin/config.json
+sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/bin/config.json
