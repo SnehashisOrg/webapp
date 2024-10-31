@@ -102,7 +102,8 @@ async def add_process_time_header(request: Request, call_next):
     start_time = time.time()
     response = await call_next(request)
     process_time = time.time() - start_time
-    statsd_client.timing(f'api.{request.url.path}.time', process_time * 1000)
+    # process time in milliseconds
+    statsd_client.timing(f'api.{request.url.path}.time', process_time)
     statsd_client.incr(f'api.{request.url.path}.count')
     return response
 
@@ -152,6 +153,8 @@ def authenticate(credentials: HTTPBasicCredentials = Depends(security), db: Sess
             headers={'WWW-Authenticate': "Basic"}
         )
 
+    logger.info("User exists, checking for password match...")
+
     dehashed_password = bcrypt.checkpw(password_to_authenticate.encode('utf-8'), user.password.encode('utf-8'))
 
     if not dehashed_password:
@@ -161,6 +164,8 @@ def authenticate(credentials: HTTPBasicCredentials = Depends(security), db: Sess
             detail="Invalid authentication credentials!",
             headers={'WWW-Authenticate': "Basic"}
         )
+    
+    logger.info('Password matched - user authenticated...')
 
     return user.email
 
@@ -176,12 +181,15 @@ Healthcheck endpoint
 async def healthcheck(request: Request, response: Response):
     # checks for the scenarios when there's a body or query params in the request
     if await request.body() or request.query_params:
+        logger.info("/healthz: query params not allowed...")
         return Response(status_code=status.HTTP_400_BAD_REQUEST, headers=HEADERS)
     
     # checks if the database connection is up
     if not get_database_connection():
+        logger.info("/healthz: database is not up yet...")
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=HEADERS)
     
+    logger.info("/healthz: the database is up and in service...")
     return Response(status_code=status.HTTP_200_OK, headers=HEADERS)
 
 """
@@ -197,6 +205,7 @@ Healthcheck 405: Method Not Allowed
 @app.options("/healthz")
 def healthcheck():
     # checks for the scenarios when the method type is not GET
+    logger.info("/healthz: mehtod not allowed...")
     return Response(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, headers=HEADERS)
 
 """
@@ -207,15 +216,16 @@ Create a user
 async def create_user(request: Request, user: UserRequestBodyModel, db: Session = Depends(get_database_session)):
 
     if request.query_params:
-        logger.info("query params not allowed...")
+        logger.info("/v2/user: POST: query params not allowed...")
         return Response(status_code=status.HTTP_400_BAD_REQUEST)
 
     try:
         if not get_database_connection():
+            logger.info("/v2/user: POST: database is not up yet...")
             return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=HEADERS)
 
         if db.query(User).filter(User.email == user.email).first():
-            logger.error(f"Database error... User already exists!!")
+            logger.error(f"/v2/user: POST: Database error... User already exists!!")
             return Response(status_code=status.HTTP_400_BAD_REQUEST, headers=HEADERS)
         
         hashed_password = bcrypt.hashpw(password=user.password.encode('utf-8'), salt=bcrypt.gensalt())
@@ -234,10 +244,11 @@ async def create_user(request: Request, user: UserRequestBodyModel, db: Session 
             db.refresh(new_user)
         
         create_user_in_db(db, new_user)
+        logger.info("/v2/user: POST: user created and saved in the database successfully...")
 
         return new_user
     except Exception as e:
-        logger.error(f"Database error... {e}")
+        logger.error(f"/v2/user: POST: Database error... {e}")
         return Response(status_code=status.HTTP_400_BAD_REQUEST, headers=HEADERS)
 
 """
@@ -248,14 +259,15 @@ Get User based on authentication
 async def get_user(request: Request, authenticated_email: str = Depends(authenticate), db: Session = Depends(get_database_session)):
     try:
         if not get_database_connection():
+            logger.info("/v2/user/self: GET: database is not up yet...")
             return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=HEADERS)
         
         if request.query_params:
-            logger.info("query params not allowed...")
+            logger.info("/v2/user/self: GET: query params not allowed...")
             return Response(status_code=status.HTTP_400_BAD_REQUEST)
 
         if request.headers.get("content-length") is not None or request.headers.get("content-type") is not None:
-            logger.info("request body is not allowed...")
+            logger.info("/v2/user/self: GET: request body is not allowed...")
             return Response(status_code=status.HTTP_400_BAD_REQUEST)
         
         if request.get("body", None) is not None:
@@ -273,9 +285,11 @@ async def get_user(request: Request, authenticated_email: str = Depends(authenti
 
         user = get_user_from_db(db, authenticated_email)
 
+        logger.info("/v2/user/self: GET: user retrieved and returned successfully...")
+
         return user
     except Exception as e:
-        print(f"Server error... {e}")
+        print(f"/v2/user/self: GET: Server error... {e}")
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 """
@@ -286,7 +300,7 @@ Update user based on authentication
 async def update_user(request: Request, user_details: UserUpdateRequestBodyModel, authenticated_email: str = Depends(authenticate),  db: Session = Depends(get_database_session)):
 
     if request.query_params:
-        logger.info("query params not allowed...")
+        logger.info("/v2/user/self: PUT: query params not allowed...")
         return Response(status_code=status.HTTP_400_BAD_REQUEST)
 
     try:
@@ -298,25 +312,25 @@ async def update_user(request: Request, user_details: UserUpdateRequestBodyModel
         user = get_user_from_db(db, authenticated_email)
 
         if authenticated_email != user_details.email:
-            logger.info("Updates to email are not allowed...")
+            logger.info("/v2/user/self: PUT: Updates to email are not allowed...")
             return Response(status_code=status.HTTP_400_BAD_REQUEST)
 
         if not user:
-            logger.info("User not found...")
+            logger.info("/v2/user/self: PUT: User not found...")
             return Response(status_code=status.HTTP_404_NOT_FOUND, headers=HEADERS)
 
         if user_details.first_name is not None:
             user.first_name = user_details.first_name
-            logger.info("Updated the first name...")
+            logger.info("/v2/user/self: PUT: Updated the first name...")
         
         if user_details.last_name is not None:
             user.last_name = user_details.last_name
-            logger.info("Updated the last name...")
+            logger.info("/v2/user/self: PUT: Updated the last name...")
         
         if user_details.password is not None:
             hashed_password = bcrypt.hashpw(password=user_details.password.encode('utf-8'), salt=bcrypt.gensalt())
             user.password = hashed_password.decode('utf-8')
-            logger.info("Updated the password...")
+            logger.info("/v2/user/self: PUT: Updated the password...")
 
         @time_database_query
         def update_user_in_db(db, user):
@@ -325,10 +339,12 @@ async def update_user(request: Request, user_details: UserUpdateRequestBodyModel
         
         update_user_in_db(db, user)
 
+        logger.info("/v2/user/self: PUT: Updated the user in the db...")
+
         return Response(status_code=status.HTTP_204_NO_CONTENT, headers=HEADERS)
 
     except Exception as e:
-        logger.info(f"Database error... {e}")
+        logger.info(f"/v2/user/self: PUT: Database error... {e}")
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=HEADERS)
 
 """
@@ -340,6 +356,7 @@ HEAD, DELETE, OPTIONS, PATCH: 405 method not allowed
 @app.patch("/v2/user/self")
 def users():
     # checks for the scenarios when the method type is not POST or PUT
+    logger.info(f"method not allowed....")
     return Response(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, headers=HEADERS)
 
 ###########################################################
@@ -355,6 +372,9 @@ async def upload_profile_pic(
     authenticated_email: str = Depends(authenticate),
     db: Session = Depends(get_database_session)
 ):
+    if request.query_params:
+        logger.info("/v2/user/self/pic: POST: query params not allowed...")
+        return Response(status_code=status.HTTP_400_BAD_REQUEST)
     # Read binary data from the request body
     body = await request.body()
 
@@ -364,10 +384,11 @@ async def upload_profile_pic(
         existing_image = db.query(Image).filter(Image.user_id == user.id).first()
 
         if existing_image:
+            logger.info("/v2/user/self/pic: POST: User already has a profile picture. Delete the existing image before uploading a new one.")
             return Response(status_code=status.HTTP_400_BAD_REQUEST, content=json.dumps({'message': 'User already has a profile picture. Delete the existing image before uploading a new one.'}))
 
     except Exception as e:
-        logger.info(f"Database error... {e}")
+        logger.info(f"/v2/user/self/pic: POST: Database error... {e}")
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=HEADERS)
 
 
@@ -379,6 +400,7 @@ async def upload_profile_pic(
     # Validate content type (assuming it's sent as a header)
     content_type = request.headers.get('Content-Type')
     if content_type not in ["image/jpeg", "image/png", "image/jpg"]:
+        logger.info("/v2/user/self/pic: POST: Invalid file type. Only JPEG, JPG, and PNG are allowed.")
         raise HTTPException(status_code=400, detail="Invalid file type. Only JPEG, JPG, and PNG are allowed.")
 
     # Generate a unique filename
@@ -392,15 +414,20 @@ async def upload_profile_pic(
     print(content_type.split("/"))
 
     # upload to s3 bucket
-    s3 = session.client("s3")
-    bucket_name = os.getenv("APP_S3_BUCKET_NAME")
+    @time_s3_call
+    def upload_image_to_s3(s3_file_key, body, content_type):
+        s3 = session.client("s3")
+        bucket_name = os.getenv("APP_S3_BUCKET_NAME")
 
-    try:
-        s3_response = s3.put_object(Bucket=bucket_name, Key=s3_file_key, Body=body, ContentType=content_type)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to upload the file to S3 bucket: {str(e)}")
+        try:
+            s3_response = s3.put_object(Bucket=bucket_name, Key=s3_file_key, Body=body, ContentType=content_type)
+            logger.info("/v2/user/self/pic: POST: image uploaded to S3 successfully...")
+            return f"https://{bucket_name}.s3.amazonaws.com/{s3_file_key}"
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to upload the file to S3 bucket: {str(e)}")
     
-    image_url = f"https://{bucket_name}.s3.amazonaws.com/{s3_file_key}"
+    image_url = upload_image_to_s3(s3_file_key, body, content_type)
+
     try:
 
         new_image = Image(
@@ -409,9 +436,15 @@ async def upload_profile_pic(
             url = image_url,
             user_id = user.id
         )
+        
+        @time_database_query
+        def insert_image_in_db(db, image):
+            db.add(image)
+            db.commit()
+        
+        insert_image_in_db(db, new_image)
 
-        db.add(new_image)
-        db.commit()
+        logger.info("/v2/user/self/pic: POST: image uploaded to the database successfully...")
 
         return {
             "file_name": unique_filename,
@@ -422,7 +455,9 @@ async def upload_profile_pic(
         }
 
     except Exception as e:
-        logger.info(f"Database error... {e}")
+        logger.info(f"/v2/user/self/pic: POST: Database error... {e}")
+        # logger.info(f"/v2/user/self/pic: POST: Database error, deleting the image from S3 if it got uploaded... {e}")
+        # s3.delete_object(Bucket=bucket_name, Key=image.file_name)
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=HEADERS)
 
 """
@@ -431,17 +466,37 @@ Get user's image
 """
 @app.get("/v2/user/self/pic", dependencies=[Depends(authenticate)])
 async def upload_profile_pic(
+    request: Request,
     authenticated_email: str = Depends(authenticate),
     db: Session = Depends(get_database_session)
 ):
+    if request.query_params:
+        logger.info("/v2/user/self/pic: GET: query params not allowed...")
+        return Response(status_code=status.HTTP_400_BAD_REQUEST)
     try:
-        user = db.query(User).filter(User.email == authenticated_email).first()
+        
+        @time_database_query
+        def get_user_from_db(db, authenticated_email):
+            user = db.query(User).filter(User.email == authenticated_email).first()
+            return user
 
-        image = db.query(Image).filter(Image.user_id == user.id).first()
+        user = get_user_from_db(db, authenticated_email)
+
+        logger.info(f"/v2/user/self/pic: GET: User found..")
+
+        @time_database_query
+        def get_image_from_db(db, user):
+            image = db.query(Image).filter(Image.user_id == user.id).first()
+            return image
+
+        image = get_image_from_db(db, user)
 
         if not image:
+            logger.info(f"/v2/user/self/pic: GET: Image not found..")
             raise HTTPException(status_code=404, detail="Profile Image not found!")
-    
+
+        logger.info(f"/v2/user/self/pic: GET: Image found..")
+
         return {
             "file_name": image.file_name,
             "id": image.id,
@@ -450,10 +505,10 @@ async def upload_profile_pic(
             "user_id": image.user_id
         }
     except HTTPException as he:
-        logger.info(f"Image not found: {he}")
+        logger.info(f"/v2/user/self/pic: GET: Image not found: {he}")
         return Response(status_code=status.HTTP_404_NOT_FOUND, headers=HEADERS)
     except Exception as e:
-        logger.info(f"Database error... {e}")
+        logger.info(f"/v2/user/self/pic: GET: Database error... {e}")
         return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=HEADERS)
 
 """
@@ -462,42 +517,66 @@ Delete user's image
 """
 @app.delete("/v2/user/self/pic", dependencies=[Depends(authenticate)], status_code=204)
 async def upload_profile_pic(
+    request: Request,
     authenticated_email: str = Depends(authenticate),
     db: Session = Depends(get_database_session)
 ): 
+    if request.query_params:
+        logger.info("/v2/user/self/pic: DELETE: query params not allowed...")
+        return Response(status_code=status.HTTP_400_BAD_REQUEST)
     try:
-        user = db.query(User).filter(User.email == authenticated_email).first()
+        @time_database_query
+        def get_user_from_db(db, authenticated_email):
+            user = db.query(User).filter(User.email == authenticated_email).first()
+            return user
 
-        image = db.query(Image).filter(Image.user_id == user.id).first()
+        user = get_user_from_db(db, authenticated_email)
+
+        logger.info(f"/v2/user/self/pic: DELETE: User found..")
+
+        @time_database_query
+        def get_image_from_db(db, user):
+            image = db.query(Image).filter(Image.user_id == user.id).first()
+            return image
+
+        image = get_image_from_db(db, user)
 
         if not image:
             raise HTTPException(status_code=404, detail="Image not found!")
 
         # delete the image from the S3 bucket
-        s3 = session.client('s3')
-        bucket_name = os.getenv("APP_S3_BUCKET_NAME")
+        @time_s3_call
+        def delete_image_from_s3(image):
+            s3 = session.client('s3')
+            bucket_name = os.getenv("APP_S3_BUCKET_NAME")
 
-        try:
-            logger.info(f"Image to be deleted: {image.file_name}")
-            s3.delete_object(Bucket=bucket_name, Key=image.file_name)
-            logger.info("Image deletion from S3 is successful..")
+            try:
+                logger.info(f"/v2/user/self/pic: DELETE: Image to be deleted: {image.file_name}")
+                s3.delete_object(Bucket=bucket_name, Key=image.file_name)
+                logger.info("/v2/user/self/pic: DELETE: Image deletion from S3 is successful..")
 
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to delete from the S3 bucket: {str(e)}")
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Failed to delete from the S3 bucket: {str(e)}")
+            
+        delete_image_from_s3(image)
         
-        db.delete(image)
-        logger.info("Image deletion from DB is successful..")
-        db.commit()
+        @time_database_query
+        def delete_image_from_db(db, image):
+            db.delete(image)
+            logger.info("/v2/user/self/pic: DELETE: Image deletion from DB is successful..")
+            db.commit()
+        
+        delete_image_from_db(db, image)
 
     except HTTPException as he:
         if he.status_code == 404:
-            print(f"Image not found error... {he}")
+            print(f"/v2/user/self/pic: DELETE: Image not found error... {he}")
             return Response(status_code=status.HTTP_404_NOT_FOUND, headers=HEADERS)
         elif he.status_code == 500:
-            logger.info(f"Failed to delete from the S3 bucket: {str(he)}")
+            logger.info(f"/v2/user/self/pic: DELETE: Failed to delete from the S3 bucket: {str(he)}")
             return Response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, headers=HEADERS)
     except Exception as e:
-        logger.info(f"Server: unexpected error!!: {e}")
+        logger.info(f"/v2/user/self/pic: DELETE: Server: unexpected error!!: {e}")
         return Response(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, headers=HEADERS)
 """
 Methods not allowed for uploading image
@@ -508,6 +587,7 @@ HEAD, PUT, OPTIONS, PATCH: 405 method not allowed
 @app.options("/v2/user/self/pic")
 @app.patch("/v2/user/self/pic")
 def users():
+    logger.info("/v2/user/self/pic: HEAD| PUT| OPTIONS| PATCH methods not allowed")
     return Response(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, headers=HEADERS)
 
 # Code entrypoint
