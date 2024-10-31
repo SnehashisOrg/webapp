@@ -9,6 +9,7 @@ Environment="MYSQL_USER=__MYSQL_USER__"
 Environment="MYSQL_PASSWORD=__MYSQL_PASSWORD__"
 Environment="MYSQL_DATABASE=__MYSQL_DATABASE__"
 Environment="MYSQL_PORT=3306"
+Environment="APP_S3_BUCKET_NAME=S3_BKT_NAME"
 WorkingDirectory=/opt/csye6225/app
 ExecStart=/opt/csye6225/venv/bin/python /opt/csye6225/app/app.py
 Restart=always
