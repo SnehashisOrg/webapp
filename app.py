@@ -19,7 +19,7 @@ import uuid
 import statsd
 import time
 
-session = boto3.Session(profile_name='dev')
+session = boto3.Session()
 
 # the main entrypoint to use FastAPI.
 app = FastAPI()
