@@ -12,12 +12,18 @@ class UserSchema(BaseModel):
     account_created: datetime
     account_updated: datetime
 
+    # model_config = ConfigDict(
+    #     from_attributes = True,
+    #     read_only_fields = {"id", "account_created", "account_updated"},
+    #     write_only_fields = {"password"}
+    # )
     model_config = ConfigDict(
         from_attributes = True,
-        read_only_fields = {"id", "account_created", "account_updated"},
-        write_only_fields = {"password"}
+        json_schema_extra = {
+            "read_only_fields": {"id", "account_created", "account_updated"},
+            "write_only_fields": {"password"}
+        }
     )
-
 # User request body schema for POST method
 class UserRequestBodyModel(BaseModel):
     email: EmailStr
@@ -39,3 +45,10 @@ class UserUpdateRequestBodyModel(BaseModel):
     model_config = ConfigDict(
         str_strip_whitespace = True
     )
+
+class ImageCreatedUserSchema(BaseModel):
+    file_name: str
+    id: UUID
+    url: str
+    upload_date: datetime
+    user_id: UUID
