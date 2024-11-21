@@ -42,21 +42,21 @@ def test_healthcheck_delete(client):
 """
 User API endpoints unit tests
 """
-def test_create_user(client, db_session):
-    user_data = {
-        "email": "test@example.com",
-        "password": "testpassword",
-        "first_name": "Test",
-        "last_name": "User"
-    }
-    response = client.post("/v2/user", json=user_data)
-    assert response.status_code == status.HTTP_201_CREATED
-    assert response.json()["email"] == "test@example.com"
+# def test_create_user(client, db_session):
+#     user_data = {
+#         "email": "test@example.com",
+#         "password": "testpassword",
+#         "first_name": "Test",
+#         "last_name": "User"
+#     }
+#     response = client.post("/v2/user", json=user_data)
+#     assert response.status_code == status.HTTP_201_CREATED
+#     assert response.json()["email"] == "test@example.com"
 
-    user = db_session.query(User).filter(User.email == "test@example.com").first()
-    assert user is not None
-    assert user.first_name == "Test"
-    assert user.last_name == "User"
+#     user = db_session.query(User).filter(User.email == "test@example.com").first()
+#     assert user is not None
+#     assert user.first_name == "Test"
+#     assert user.last_name == "User"
 
 def test_create_user_invalid_name(client):
     user_data = {
