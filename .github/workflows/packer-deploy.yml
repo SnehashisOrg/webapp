@@ -19,6 +19,8 @@ jobs:
       MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_PACKER_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_PACKER_SECRET_ACCESS_KEY }}
+      AWS_DEMO_ACCESS_KEY_ID: ${{ secrets.AWS_DEMO_PACKER_ACCESS_KEY_ID }}
+      AWS_DEMO_SECRET_ACCESS_KEY: ${{ secrets.AWS_DEMO_PACKER_SECRET_ACCESS_KEY }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
       DEMO_ACCOUNT_ID: ${{ secrets.DEMO_ACCOUNT_ID }}
     
@@ -125,6 +127,13 @@ jobs:
        --image-id ${{ env.AMI_ID }} \
        --launch-permission "Add=[{UserId=${{ env.DEMO_ACCOUNT_ID }}}]" \
        --region ${{ env.AWS_REGION }}
+    
+    - name: Configure AWS Credentials for DEMO account
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_DEMO_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_DEMO_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
 
     - name: Get Auto Scaling Group information
       run: |
