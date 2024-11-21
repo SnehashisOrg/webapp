@@ -642,6 +642,7 @@ def users():
 
 @app.get("/v2/user/verify")
 async def verify_email(token: str, db: Session = Depends(get_database_session)):
+    logger.info("Verifying user... ")
     if not token:
         logger.info("No token provided")
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": "No token provided"})
