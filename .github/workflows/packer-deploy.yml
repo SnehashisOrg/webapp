@@ -128,16 +128,22 @@ jobs:
 
     - name: Get Auto Scaling Group information
       run: |
-        ASG_INFO=$(aws autoscaling describe-auto-scaling-groups --query 'AutoScalingGroups[?contains(AutoScalingGroupName, `csye6225_webapp_asg`)].[AutoScalingGroupName,LaunchTemplate.LaunchTemplateId]' --output text)
-        echo "ASG_NAME=$(echo $ASG_INFO | cut -f1)" >> $GITHUB_ENV
-        echo "LAUNCH_TEMPLATE_ID=$(echo $ASG_INFO | cut -f2)" >> $GITHUB_ENV
+        ASG_INFO=$(aws autoscaling describe-auto-scaling-groups --query 'AutoScalingGroups[?contains(AutoScalingGroupName, `csye6225_webapp_asg`)].[AutoScalingGroupName]' --output text)
+        echo "ASG_NAME=$ASG_INFO" >> $GITHUB_ENV
+        echo "Auto Scaling Group Name: $ASG_INFO"
+     
+    - name: Get Launch Template information
+      run: |
+        LAUNCH_TEMPLATE_INFO=$(aws ec2 describe-launch-templates --query 'LaunchTemplates[?contains(LaunchTemplateName, `csye6225_webapp_launch_template`)].LaunchTemplateId' --output text)
+        echo "LAUNCH_TEMPLATE_ID=$LAUNCH_TEMPLATE_INFO" >> $GITHUB_ENV
+        echo "Launch Template ID: $LAUNCH_TEMPLATE_INFO"
      
 
     - name: Create new launch template version
       run: |
         aws ec2 create-launch-template-version \
         --launch-template-id ${{ env.LAUNCH_TEMPLATE_ID }} \
-        --source-version 1 \
+        --source-version '$Latest' \
         --launch-template-data '{"ImageId":"${{ env.AMI_ID }}"}'
      
     - name: Start instance refresh
