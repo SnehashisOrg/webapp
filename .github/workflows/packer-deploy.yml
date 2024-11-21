@@ -110,23 +110,23 @@ jobs:
         exit 1
     
     # build AMI
-    - name: Build custom image
-      run: |
-        packer init .
-        packer build -var-file=variables.pkrvars.hcl webapp.pkr.hcl
+    # - name: Build custom image
+    #   run: |
+    #     packer init .
+    #     packer build -var-file=variables.pkrvars.hcl webapp.pkr.hcl
 
-    - name: Extract AMI ID
-      run: |
-        AMI_ID=$(jq -r '.builds[-1].artifact_id' manifest.json | cut -d':' -f2)
-        echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
-        echo "Created AMI ID: $AMI_ID"
+    # - name: Extract AMI ID
+    #   run: |
+    #     AMI_ID=$(jq -r '.builds[-1].artifact_id' manifest.json | cut -d':' -f2)
+    #     echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
+    #     echo "Created AMI ID: $AMI_ID"
     
-    - name: Share AMI with DEMO account
-      run: |
-       aws ec2 modify-image-attribute \
-       --image-id ${{ env.AMI_ID }} \
-       --launch-permission "Add=[{UserId=${{ env.DEMO_ACCOUNT_ID }}}]" \
-       --region ${{ env.AWS_REGION }}
+    # - name: Share AMI with DEMO account
+    #   run: |
+    #    aws ec2 modify-image-attribute \
+    #    --image-id ${{ env.AMI_ID }} \
+    #    --launch-permission "Add=[{UserId=${{ env.DEMO_ACCOUNT_ID }}}]" \
+    #    --region ${{ env.AWS_REGION }}
     
     - name: Configure AWS Credentials for DEMO account
       uses: aws-actions/configure-aws-credentials@v1
@@ -134,6 +134,17 @@ jobs:
         aws-access-key-id: ${{ secrets.AWS_DEMO_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_DEMO_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
+
+    - name: Verify DEMO account credentials
+      run: |
+        echo "Verifying DEMO account credentials..."
+        aws ec2 describe-instances --query 'Reservations[*].Instances[*].[InstanceId]' --output text
+        if [ $? -eq 0 ]; then
+          echo "DEMO account credentials verified successfully."
+        else
+          echo "Failed to verify DEMO account credentials. Please check the permissions and try again."
+          exit 1
+        fi
 
     - name: Get Auto Scaling Group information
       run: |
