@@ -10,6 +10,8 @@ Environment="MYSQL_PASSWORD=__MYSQL_PASSWORD__"
 Environment="MYSQL_DATABASE=__MYSQL_DATABASE__"
 Environment="MYSQL_PORT=3306"
 Environment="APP_S3_BUCKET_NAME=__S3_BKT_NAME__"
+Environment="APP_SNS_TOPIC_ARN=__APP_SNS_TOPIC_ARN__"
+Environment="APP_API_ENDPOINT=__APP_API_ENDPOINT__"
 WorkingDirectory=/opt/csye6225/app
 ExecStart=/opt/csye6225/venv/bin/python /opt/csye6225/app/app.py
 Restart=always
