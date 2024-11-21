@@ -135,6 +135,17 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_DEMO_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
 
+    - name: Verify DEMO account credentials
+      run: |
+        echo "Verifying DEMO account credentials..."
+        aws ec2 describe-instances --query 'Reservations[*].Instances[*].[InstanceId]' --output text
+        if [ $? -eq 0 ]; then
+          echo "DEMO account credentials verified successfully."
+        else
+          echo "Failed to verify DEMO account credentials. Please check the permissions and try again."
+          exit 1
+        fi
+
     - name: Get Auto Scaling Group information
       run: |
         ASG_INFO=$(aws autoscaling describe-auto-scaling-groups --query 'AutoScalingGroups[?contains(AutoScalingGroupName, `csye6225_webapp_asg`)].[AutoScalingGroupName]' --output text)
