@@ -148,6 +148,11 @@ jobs:
 
     - name: Get Auto Scaling Group information
       run: |
+        echo "Listing all ASGs:"
+        aws autoscaling describe-auto-scaling-groups --query 'AutoScalingGroups[*].[AutoScalingGroupName]' --output text
+        echo "Attempting to find specific ASG:"
+        ASG_INFO=$(aws autoscaling describe-auto-scaling-groups --query 'AutoScalingGroups[?contains(AutoScalingGroupName, `csye6225_webapp_asg`)].[AutoScalingGroupName]' --output text)
+        echo "ASG_NAME=$ASG_INFO"
         ASG_INFO=$(aws autoscaling describe-auto-scaling-groups --query 'AutoScalingGroups[?contains(AutoScalingGroupName, `csye6225_webapp_asg`)].[AutoScalingGroupName]' --output text)
         echo "ASG_NAME=$ASG_INFO" >> $GITHUB_ENV
         echo "Auto Scaling Group Name: $ASG_INFO"
