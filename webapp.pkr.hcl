@@ -49,6 +49,10 @@ source "amazon-ebs" "ubuntu" {
     volume_size           = 8
     volume_type           = "gp2"
   }
+
+  tags = {
+    Name = "ami-csye6225-coursework-${formatdate("YYYY-MM-DD-hh-mm-ss", timestamp())}"
+  }
 }
 
 build {
