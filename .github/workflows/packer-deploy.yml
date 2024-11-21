@@ -125,6 +125,43 @@ jobs:
        --image-id ${{ env.AMI_ID }} \
        --launch-permission "Add=[{UserId=${{ env.DEMO_ACCOUNT_ID }}}]" \
        --region ${{ env.AWS_REGION }}
+
+    - name: Get Auto Scaling Group information
+      run: |
+        ASG_INFO=$(aws autoscaling describe-auto-scaling-groups --query 'AutoScalingGroups[?contains(AutoScalingGroupName, `csye6225_webapp_asg`)].[AutoScalingGroupName,LaunchTemplate.LaunchTemplateId]' --output text)
+        echo "ASG_NAME=$(echo $ASG_INFO | cut -f1)" >> $GITHUB_ENV
+        echo "LAUNCH_TEMPLATE_ID=$(echo $ASG_INFO | cut -f2)" >> $GITHUB_ENV
+     
+
+    - name: Create new launch template version
+      run: |
+        aws ec2 create-launch-template-version \
+        --launch-template-id ${{ env.LAUNCH_TEMPLATE_ID }} \
+        --source-version 1 \
+        --launch-template-data '{"ImageId":"${{ env.AMI_ID }}"}'
+     
+    - name: Start instance refresh
+      run: |
+        aws autoscaling start-instance-refresh \
+        --auto-scaling-group-name ${{ env.ASG_NAME }} \
+        --preferences '{"MinHealthyPercentage": 90}'
+     
+    - name: Wait for instance refresh to complete
+      run: |
+        while true; do
+          STATUS=$(aws autoscaling describe-instance-refreshes \
+            --auto-scaling-group-name ${{ env.ASG_NAME }} \
+            --query 'InstanceRefreshes.Status' --output text)
+          echo "Current status: $STATUS"
+          if [ "$STATUS" == "Successful" ] || [ "$STATUS" == "Failed" ] || [ "$STATUS" == "Cancelled" ]; then
+            break
+          fi
+          sleep 60
+        done
+        if [ "$STATUS" != "Successful" ]; then
+          echo "Instance refresh did not complete successfully. Final status: $STATUS"
+          exit 1
+        fi
     
     # step for cleaning up the zip file that is created to run packer validate as it needs to look for app.zip in the working dir
     - name: Clean up
