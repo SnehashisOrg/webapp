@@ -6,15 +6,18 @@ from contextlib import asynccontextmanager
 from sqlalchemy.orm import Session
 from sqlalchemy_utils import database_exists, create_database
 from sqlalchemy.exc import OperationalError
-from models.user import User, Base, Image
+from sqlalchemy import and_
+from models.user import User, Base, Image, Verification
 from schemas.user_schema import UserSchema, UserRequestBodyModel, UserUpdateRequestBodyModel
 from database import get_database_connection, get_database_session, get_engine, DB_CONNECTION_STRING
+from datetime import datetime, timedelta
 import os
 import uvicorn
 import json
 import logging
 import bcrypt
 import boto3
+from botocore.exceptions import ClientError
 import uuid
 import statsd
 import time
@@ -167,6 +170,19 @@ def authenticate(credentials: HTTPBasicCredentials = Depends(security), db: Sess
     
     logger.info('Password matched - user authenticated...')
 
+    logger.info('Checking whether user email is verified or not...')
+
+    # Check if user is verified
+    if not user.is_verified:
+        logger.info("User email not verified!")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email before accessing this resource",
+            headers={'WWW-Authenticate': "Basic"}
+        )
+
+    logger.info("Email verified: User is authorized!")
+
     return user.email
 
 '''
@@ -244,9 +260,39 @@ async def create_user(request: Request, user: UserRequestBodyModel, db: Session 
             db.refresh(new_user)
         
         create_user_in_db(db, new_user)
+
         logger.info("/v2/user: POST: user created and saved in the database successfully...")
 
+        token = str(uuid.uuid4())
+        expiration_time = datetime.now() + timedelta(minutes=3)
+        verification_link = f'{os.getenv('API_ENDPOINT')}/v2/user/verify?token={token}'
+
+        logger.info("Creating SNS client...")
+        
+        sns_client = session.client('sns')
+        SNS_TOPIC_ARN = os.getenv('APP_SNS_TOPIC_ARN')
+
+        message = {
+            "username": f'{new_user.first_name} {new_user.last_name}',
+            "email": new_user.email,
+            "verification_link": verification_link,
+            "expiration_time": str(expiration_time),
+            "token": token
+        }
+
+        try:
+            response = sns_client.publish(
+                TopicArn = SNS_TOPIC_ARN,
+                Message = json.dumps(message),
+                MessageStructure = 'string'
+            )
+
+        except ClientError as e:
+            logger.error(f"Failed to publish message to SNS: {e}")
+            return Response(status_code=status.HTTP_400_BAD_REQUEST, headers=HEADERS)
+
         return new_user
+
     except Exception as e:
         logger.error(f"/v2/user: POST: Database error... {e}")
         return Response(status_code=status.HTTP_400_BAD_REQUEST, headers=HEADERS)
@@ -589,6 +635,45 @@ HEAD, PUT, OPTIONS, PATCH: 405 method not allowed
 def users():
     logger.info("/v2/user/self/pic: HEAD| PUT| OPTIONS| PATCH methods not allowed")
     return Response(status_code=status.HTTP_405_METHOD_NOT_ALLOWED, headers=HEADERS)
+
+
+@app.get("/v2/user/verify")
+async def verify_email(token: str, db: Session = Depends(get_database_session)):
+    if not token:
+        logger.info("No token provided")
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": "No token provided"})
+
+    @time_database_query
+    def get_verification_from_db(db, token):
+        return db.query(Verification).filter(
+            and_(
+                Verification.token == token,
+                Verification.expiration_time > datetime.now()
+            )
+        ).first()
+
+    verification = get_verification_from_db(db, token)
+
+    if not verification:
+        logger.info("Invalid or expired token")
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": "Invalid or expired token"})
+
+    @time_database_query
+    def get_user_from_db(db, email):
+        return db.query(User).filter(User.email == verification.email).first()
+
+    user = get_user_from_db(db, verification.email)
+    
+    if user:
+        user.is_verified = True
+        verification.link_verified = True
+        # db.delete(verification) # I do not want to delete this is an option, I want to keep history
+        db.commit()
+        logger.info(f"Email verified successfully for user: {user.email}")
+        return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "Email verified successfully"})
+    else:
+        logger.info(f"User not found for email: {verification.email}")
+        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"error": "User not found"})
 
 # Code entrypoint
 if __name__ == "__main__":
