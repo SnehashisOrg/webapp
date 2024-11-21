@@ -174,12 +174,22 @@ jobs:
      
     - name: Wait for instance refresh to complete
       run: |
+        TIMEOUT=3600
+        START_TIME=$(date +%s)
         while true; do
+          CURRENT_TIME=$(date +%s)
+          if [ $((CURRENT_TIME - START_TIME)) -gt $TIMEOUT ]; then
+            echo "Timeout reached. Exiting."
+            exit 1
+          fi
           STATUS=$(aws autoscaling describe-instance-refreshes \
             --auto-scaling-group-name ${{ env.ASG_NAME }} \
-            --query 'InstanceRefreshes.Status' --output text)
+            --query 'InstanceRefreshes[0].Status' --output text)
           echo "Current status: $STATUS"
-          if [ "$STATUS" == "Successful" ] || [ "$STATUS" == "Failed" ] || [ "$STATUS" == "Cancelled" ]; then
+          if [ -z "$STATUS" ] || [ "$STATUS" == "None" ]; then
+            echo "No active instance refresh found."
+            break
+          elif [ "$STATUS" == "Successful" ] || [ "$STATUS" == "Failed" ] || [ "$STATUS" == "Cancelled" ]; then
             break
           fi
           sleep 60
