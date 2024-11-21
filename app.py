@@ -272,7 +272,8 @@ async def create_user(request: Request, user: UserRequestBodyModel, db: Session 
 
         logger.info("Creating SNS client...")
         
-        sns_client = session.client('sns')
+        # SNS client creation
+        sns_client = session.client('sns', region_name='us-east-1')
         SNS_TOPIC_ARN = os.getenv('APP_SNS_TOPIC_ARN')
 
         message = {
