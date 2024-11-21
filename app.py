@@ -268,7 +268,7 @@ async def create_user(request: Request, user: UserRequestBodyModel, db: Session 
         nyc_timezone = ZoneInfo("America/New_York")
         nyc_time = datetime.now(nyc_timezone)
         expiration_time = nyc_time + timedelta(minutes=3)
-        verification_link = f'{os.getenv('API_ENDPOINT')}/v2/user/verify?token={token}'
+        verification_link = f'{os.getenv('APP_API_ENDPOINT')}/v2/user/verify?token={token}'
 
         logger.info("Creating SNS client...")
         
