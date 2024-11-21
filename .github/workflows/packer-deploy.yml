@@ -128,11 +128,11 @@ jobs:
     #    --launch-permission "Add=[{UserId=${{ env.DEMO_ACCOUNT_ID }}}]" \
     #    --region ${{ env.AWS_REGION }}
     
-    - name: Configure AWS Credentials for DEMO account
+    - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        aws-access-key-id: ${{ secrets.AWS_DEMO_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_DEMO_SECRET_ACCESS_KEY }}
+        aws-access-key-id: ${{ env.AWS_DEMO_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ env.AWS_DEMO_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
 
     - name: Verify DEMO account credentials
