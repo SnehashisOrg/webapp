@@ -11,6 +11,7 @@ from models.user import User, Base, Image, Verification
 from schemas.user_schema import UserSchema, UserRequestBodyModel, UserUpdateRequestBodyModel
 from database import get_database_connection, get_database_session, get_engine, DB_CONNECTION_STRING
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 import os
 import uvicorn
 import json
@@ -264,7 +265,9 @@ async def create_user(request: Request, user: UserRequestBodyModel, db: Session 
         logger.info("/v2/user: POST: user created and saved in the database successfully...")
 
         token = str(uuid.uuid4())
-        expiration_time = datetime.now() + timedelta(minutes=3)
+        nyc_timezone = ZoneInfo("America/New_York")
+        nyc_time = datetime.now(nyc_timezone)
+        expiration_time = nyc_time + timedelta(minutes=3)
         verification_link = f'{os.getenv('API_ENDPOINT')}/v2/user/verify?token={token}'
 
         logger.info("Creating SNS client...")
