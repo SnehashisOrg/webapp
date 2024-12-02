@@ -216,7 +216,7 @@ GET: /cicd
 cicd endpoint - To check instance refresh
 """
 @app.get("/cicd")
-async def healthcheck(request: Request, response: Response):
+async def cicd(request: Request, response: Response):
     # checks for the scenarios when there's a body or query params in the request
     if await request.body() or request.query_params:
         logger.info("/cicd: query params not allowed...")
