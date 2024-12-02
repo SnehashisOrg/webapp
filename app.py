@@ -209,6 +209,26 @@ async def healthcheck(request: Request, response: Response):
     logger.info("/healthz: the database is up and in service...")
     return Response(status_code=status.HTTP_200_OK, headers=HEADERS)
 
+
+
+"""
+GET: /cicd 
+cicd endpoint - To check instance refresh
+"""
+@app.get("/cicd")
+async def healthcheck(request: Request, response: Response):
+    # checks for the scenarios when there's a body or query params in the request
+    if await request.body() or request.query_params:
+        logger.info("/cicd: query params not allowed...")
+        return Response(status_code=status.HTTP_400_BAD_REQUEST, headers=HEADERS)
+    
+    # checks if the database connection is up
+    if not get_database_connection():
+        logger.info("/cicd: database is not up yet...")
+        return Response(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, headers=HEADERS)
+    
+    logger.info("/cicd: the database is up and in service...")
+    return Response(status_code=status.HTTP_200_OK, headers=HEADERS)
 """
 /healthz
 POST, PUT, PATCH, DELETE, HEAD, OPTIONS 
